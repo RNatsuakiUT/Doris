@@ -50,6 +50,7 @@
 #include <cmath>                // sqrt rint
 #include <algorithm>            // max
 #include <cstdio>               // some compilers, remove function
+//#include <complex>
 
 #ifdef WIN32
 // Jia defined min max here, but I did this in constants.hh
@@ -83,7 +84,7 @@ void coarseporbit(
         const BASELINE  &baseline)
   {
   TRACE_FUNCTION("coarseporbit (BK 12-Dec-1998)");
-  const int16   MAXITER   = 10;        // maximum number of iterations
+  const int16   MAXITER   = 100;       // maximum number of iterations
   const real8   CRITERPOS = 1e-6;      // 1micrometer
   const real8   CRITERTIM = 1e-10;     // seconds (~10-6 m)
 
@@ -160,6 +161,7 @@ void coarseporbit(
   scratchlogfile.close();
 
   // ______ give some extra info in resfile: Bperp, Bpar, Bh, Bv, Btemp ______
+  // [RN] changed onedecimal -> twodecimal @utilities.hh
   ofstream scratchresfile("scratchrescoarse", ios::out | ios::trunc);
   bk_assert(scratchresfile,"coarseporbit: scratchrescoarse",__FILE__,__LINE__);
   scratchresfile.setf(ios::right, ios::adjustfield);
@@ -175,35 +177,35 @@ void coarseporbit(
     << "\n  Bperp      [m]:     "
     << setw(10)
     << setiosflags(ios::right)
-    << onedecimal(Bperp) << "      \t// Perpendicular baseline"
+    << twodecimal(Bperp) << "      \t// Perpendicular baseline"
     << "\n  Bpar       [m]:     "
     << setw(10)
     << setiosflags(ios::right)
-    << onedecimal(Bpar)  << "      \t// Parallel baseline"
+    << twodecimal(Bpar)  << "      \t// Parallel baseline"
     << "\n  Bh         [m]:     "
     << setw(10)
     << setiosflags(ios::right)
-    << onedecimal(Bh)    << "      \t// Horizontal baseline"
+    << twodecimal(Bh)    << "      \t// Horizontal baseline"
     << "\n  Bv         [m]:     "
     << setw(10)
     << setiosflags(ios::right)
-    << onedecimal(Bv)    << "      \t// Vertical baseline"
+    << twodecimal(Bv)    << "      \t// Vertical baseline"
     << "\n  B          [m]:     "
     << setw(10)
     << setiosflags(ios::right)
-    << onedecimal(B)     << "      \t// Baseline (distance between sensors)"
+    << twodecimal(B)     << "      \t// Baseline (distance between sensors)"
     << "\n  alpha      [deg]:   "
     << setw(10)
     << setiosflags(ios::right)
-    << onedecimal(alpha) << "      \t// Baseline orientation"
+    << twodecimal(alpha) << "      \t// Baseline orientation"
     << "\n  theta      [deg]:   "
     << setw(10)
     << setiosflags(ios::right)
-    << onedecimal(theta) << "      \t// look angle"
+    << twodecimal(theta) << "      \t// look angle"
     << "\n  inc_angle  [deg]:   "
     << setw(10)
     << setiosflags(ios::right)
-    << onedecimal(inc_angle) << "      \t// incidence angle"
+    << twodecimal(inc_angle) << "      \t// incidence angle"
     << "\n  orbitconv  [deg]:   "
     << setw(10)
     << setiosflags(ios::right)
@@ -211,7 +213,7 @@ void coarseporbit(
     << "\n  Height_amb [m]:     "
     << setw(10)
     << setiosflags(ios::right)
-    << onedecimal(Hamb)       << "      \t// height = h_amb*phase/2pi (approximately)"
+    << twodecimal(Hamb)       << "      \t// height = h_amb*phase/2pi (approximately)"
     << "\n  Control point master (line,pixel,hei) = ("
     <<  cen_lin << ", " << cen_pix << ", " << HEI << ")"
     << "\n  Control point slave  (line,pixel,hei) = ("
@@ -1330,7 +1332,8 @@ void mtiming_correl(
     // Sampl  = sinfo.readdatar4(master); // readfile(Sampl,master,numberoflatpixels?,winfromfile?,zerooffset)
     Mcmpl  = minfo.readdata(swin);      // small patch
     Sampl  = sinfo.readdatar4(mwin);       // big   patch
-    mMag   = magnitude(Mcmpl);
+    // mMag   = magnitude(Mcmpl);
+    mMag   = logmagnitude(Mcmpl);
     matrix<real4> &sMask = mMag ;           // amplitude small patch from master that shifts over
     matrix<real4> &mMask = Sampl ;          // amplitude big   patch from simamp
 
@@ -1652,6 +1655,7 @@ void mtiming_correlfft(
 
   // ______Compute coherence of these points______
   matrix<complr4> Mcmpl;          // Master complex image
+  matrix<real4>   Mampl;          // Master amplitude
   matrix<real4>   Sampl;          // Simulated amplitude
   matrix<complr4> Scmpl;           // real4 simamp --> creal4 simamp
   matrix<real4>   Result(Nwin,3); //  R(i,0):delta l;
@@ -1684,6 +1688,10 @@ void mtiming_correlfft(
 
     // ______Read windows from files______
     Mcmpl  = minfo.readdata(swin);           // master read patch
+    Mampl   = logmagnitude(Mcmpl);
+    Mcmpl   = mat2cr4(Mampl);
+    Mampl.resize(1,1);                       // dealloc...
+    // get amp and calc log
     Sampl  = sinfo.readdatar4(mwin);         // simamp (DEM) read patch
     Scmpl   = mat2cr4(Sampl);
     Sampl.resize(1,1);                       // dealloc...
@@ -2290,6 +2298,8 @@ cerr << endl;
   // --- Threshold on coherence ---
   real4 var_coh  = 0.0;
   real4 mean_coh = 0.0;
+  uint cntmn = 0;
+  real4 mean_coh_thre = 0.0;
   for (uint i=0; i<nW; i++)             // [MA] fix to ignore -999 values from statistics
     {
      if ( sortResult(i,0) == -999 )     // if NaN
@@ -2297,10 +2307,16 @@ cerr << endl;
         nWNANrm -= 1;          // determine number of windows without NaN
         continue;
        }
-     mean_coh+=sortResult(i,0);
+     // mean_coh+=sortResult(i,0);
+     // [RN] calculate mean coherence from the first 16 samples for threshold
+     if (i<16){
+       mean_coh_thre += sortResult(i,0);
+       cntmn++;
+       }
     }
   //mean_coh /= real4(nW);
   mean_coh /= real4(nWNANrm);           // mean coherence
+  mean_coh_thre /= real4(cntmn);        // [RN] calculate mean coherence from the first 32 samples 
 
   for (uint i=0; i<nW; i++)             // [MA fix to ignore -999 values from statistics
     {
@@ -2317,7 +2333,8 @@ cerr << endl;
   INFO.print();
 
   // ______ Statistics about threshold ______
-  const real4 thresh_coh = mean_coh;
+  // const real4 thresh_coh = mean_coh;
+  const real4 thresh_coh = mean_coh_thre;
   INFO << "Using as threshold:                    " << thresh_coh;
   INFO.print();
 
@@ -2678,7 +2695,7 @@ void finecoreg(
   if (tenpercent==0) tenpercent = 1000;
   int32 percent = 0;
 
-   int32 fivepercent = int32(rint(Nwin/5.0));
+  int32 fivepercent = int32(rint(Nwin/5.0));
   if (fivepercent==0) fivepercent = 1000;
   
 //if (fineinput.method== fc_coherence)          // input file  ()
@@ -4003,7 +4020,7 @@ void coregpm(
   real4 SIGMAP=-999.9;// seems range direction is better???
   if (coregpminput.weightflag!=3)
     {
-    SIGMAL = 0.15/master.ovs_az;// sigma in orig pixels
+    SIGMAL = 0.15/real4(master.ovs_az);// sigma in orig pixels
     SIGMAP = 0.10/master.ovs_rg;// seems range direction is better???
     DEBUG.print("Using a smaller sigma in range, because it seems that can be estimated better");
     INFO << "a priori std.dev offset vectors line direction [samples]:  " << SIGMAL;
@@ -4042,9 +4059,9 @@ void coregpm(
           posP = int32(Data(ii,2));
           offL = Data(ii,3);
           offP = Data(ii,4);
-          pos = (streampos)((posL-master.currentwindow.linelo)*                 // [MA] (streampos) define in the lhs to eliminate int wrapping
-                            master.currentwindow.pixels() + posP - master.currentwindow.pixlo);
-          pos = (streampos)(pos * sizer8);
+          pos = (streampos)(int64(posL-master.currentwindow.linelo)*                 // [MA] (streampos) define in the lhs to eliminate int wrapping
+                            int64(master.currentwindow.pixels() + posP - master.currentwindow.pixlo));
+          pos = (streampos)(pos * int64(sizer8));
 
           DeltaLfile.seekg(pos,ios::beg);
           DeltaPfile.seekg(pos,ios::beg);
@@ -5301,19 +5318,21 @@ void resample(
         const matrix<real8>     &minMaxL,
         const matrix<real8>     &minMaxP
 )
-  {
+{
   TRACE_FUNCTION("resample (BK 16-Mar-1999; BK 09-Nov-2000)")
   if   (resampleinput.shiftazi == 1)
+  {
     DEBUG.print("shifting kernelL to data fDC BK 26-Oct-2002");
+  }
   // ___ Handle input ___
   //const uint BUFFERMEMSIZE = generalinput.memory;       // Bytes  500MB --> 500 000 000 bytes
   const real8 BUFFERMEMSIZE = generalinput.memory;       // Bytes  500MB --> 500 000 000 bytes
   const int32 Npoints      = resampleinput.method%100;  // #pnts interpolator
   if (isodd(Npoints))
-    {
+  {
     PRINT_ERROR("resample only even point interpolators.")
     throw(input_error);
-    }
+  }
   const int32 Npointsd2    = Npoints/2;
   const int32 Npointsd2m1  = Npointsd2-1;
   //const uint  Sfilelines   = slave.currentwindow.lines();
@@ -5322,10 +5341,10 @@ void resample(
   const uint sizeofr4      = sizeof(real4); //[FvL]
 
   // ______ Normalize data for polynomial ______
- // const real8 minL         = master.originalwindow.linelo;
- // const real8 maxL         = master.originalwindow.linehi;
- // const real8 minP         = master.originalwindow.pixlo;
- // const real8 maxP         = master.originalwindow.pixhi;
+  // const real8 minL         = master.originalwindow.linelo;
+  // const real8 maxL         = master.originalwindow.linehi;
+  // const real8 minP         = master.originalwindow.pixlo;
+  // const real8 maxP         = master.originalwindow.pixhi;
   const real8 minL           = minMaxL(0,0);
   const real8 maxL           = minMaxL(1,0);
   const real8 minP           = minMaxP(0,0);
@@ -5347,11 +5366,10 @@ void resample(
   INFO << "KNAB/RC kernel uses: oversampling ratio: " << CHI;
   INFO.print();
   if (CHI < 1.1)
-    {
+  {
     WARNING << "Oversampling ratio: " << CHI << " not optimal for KNAB/RC";
     WARNING.print();
-    }
-
+  }
 
   // ====== Create lookup table ======
   // ______ e.g. four point interpolator
@@ -5371,7 +5389,9 @@ void resample(
   register int32 i;
   matrix<real4> x_axis(Npoints,1);
   for (i=0; i<Npoints; ++i)
+  {
     x_axis(i,0) = 1.0 - Npointsd2 + i;                  // start at [-1 0 1 2]
+  }
 
   // ______ Lookup table complex because of multiplication with complex ______
   // ______ Loopkup table for azimuth and range and ______
@@ -5386,12 +5406,12 @@ void resample(
   matrix<real4>   *pntAxis[Ninterval];
 
   for (i=0; i<Ninterval; ++i)
-    {
+  {
     pntKernelAz[i] = new matrix<complr4> (Npoints,1);
     pntKernelRg[i] = new matrix<complr4> (Npoints,1);
     pntAxis[i]     = new matrix<real4>   (Npoints,1);// only used for azishift
     switch(resampleinput.method)
-      {
+    {
       // --- Extremely simple kernels (not good, but fast) ---
       case rs_rect:
         (*pntKernelAz[i]) = mat2cr4(rect(x_axis));
@@ -5456,28 +5476,31 @@ void resample(
       default:
         PRINT_ERROR("impossible.")
         throw(unhandled_case_error);
-      }//kernel selector
+    }//kernel selector
     (*pntAxis[i]) = x_axis;// to shift kernelL use: k*=exp(-i*2pi*axis*fdc/prf)
     x_axis       -= dx;    // Note: 'wrong' way (mirrored)
-    }
+  }
   // ====== Usage: pntKernelAz[0]->showdata(); or (*pntKernelAz[0][0]).showdata(); ======
   // ______ Log kernels to check sum, etc. ______
   DEBUG.print("Overview of LUT for interpolation kernel follows:");
   DEBUG.print("-------------------------------------------------");
 
   for (i=0; i<Ninterval; ++i)
-    {
+  {
     for (int32 x=0; x<Npoints; ++x)
+    {
       DEBUG << ((*pntAxis[i])(x,0)) << "      ";
+    }
+      
     DEBUG.print();
     real4 sum_az = 0.0;
     real4 sum_rg = 0.0;
     for (int32 x=0; x<Npoints; ++x)
-      {
+    {
       DEBUG << real((*pntKernelAz[i])(x,0)) << " ";// complex kernel
       sum_az += real((*pntKernelAz[i])(x,0));
       sum_rg += real((*pntKernelRg[i])(x,0));
-      }
+    }
     DEBUG << "(sum=" << sum_az << ")";
     DEBUG.print();
     DEBUG.print("Normalizing kernel by dividing LUT elements by sum:");
@@ -5485,9 +5508,11 @@ void resample(
     (*pntKernelRg[i]) /= sum_rg;
     // ______ Only show azimuth kernel ______
     for (int32 x=0; x<Npoints; ++x)
+    {
       DEBUG << real((*pntKernelAz[i])(x,0)) << " ";// complex kernel; normalized
-    DEBUG.print();
     }
+    DEBUG.print();
+  }
   PROGRESS.print("Resample: normalized lookup table created (kernel and axis).");
 
   // ______Save some time by computing degree here______
@@ -5504,23 +5529,26 @@ void resample(
   ifstream DeltaLfile, DeltaPfile;
 
   if (demassist)
-    {
-      openfstream(DeltaLfile,"dac_delta_line.raw");
-      bk_assert(DeltaLfile,"dac_delta_line.raw",__FILE__,__LINE__);
-      openfstream(DeltaPfile,"dac_delta_pixel.raw");
-      bk_assert(DeltaPfile,"dac_delta_pixel.raw",__FILE__,__LINE__);
-    }
+  {
+    openfstream(DeltaLfile,"dac_delta_line.raw");
+    bk_assert(DeltaLfile,"dac_delta_line.raw",__FILE__,__LINE__);
+    openfstream(DeltaPfile,"dac_delta_pixel.raw");
+    bk_assert(DeltaPfile,"dac_delta_pixel.raw",__FILE__,__LINE__);
+  }
 
   streampos pos;
 
   // ______Corners of overlap in master system______
   // changed by FvL
-
   window overlap;
   if (demassist)
+  {
     overlap = getoverlap(master,slave,real8(Npointsd2),real8(ms_az_timing_error_L),real8(ms_r_timing_error_P));
+  }
   else
+  {
     overlap = getoverlap(master,slave,real8(Npointsd2),real8(0),real8(0));
+  }
 
 
   // ====== Adjust overlap possibly for RS_DBOW card ======
@@ -5532,28 +5560,28 @@ void resample(
         resampleinput.dbow.linehi == 0 &&
         resampleinput.dbow.pixlo  == 0 &&
         resampleinput.dbow.pixhi  == 0    ))
-    {
+  {
     // ______ Check if overlap is large enough to contain DBOW ______
     if (resampleinput.dbow.linelo > overlap.linehi)
-      {
+    {
       PRINT_ERROR("RS_DBOW: specified min. line larger than max. line of overlap.")
       throw(input_error);
-      }
+    }
     if (resampleinput.dbow.linehi < overlap.linelo)
-      {
+    {
       PRINT_ERROR("RS_DBOW: specified max. line smaller than min. line of overlap.")
       throw(input_error);
-      }
+    }
     if (resampleinput.dbow.pixlo > overlap.pixhi)
-      {
+    {
       PRINT_ERROR("RS_DBOW: specified min. pixel larger than max. pixel of overlap.")
       throw(input_error);
-      }
+    }
     if (resampleinput.dbow.pixhi < overlap.pixlo)
-      {
+    {
       PRINT_ERROR("RS_DBOW: specified max. pixel smaller than min. pixel of overlap.")
       throw(input_error);
-      }
+    }
 
     write0lines1  =  overlap.linelo - resampleinput.dbow.linelo;
 
@@ -5569,41 +5597,41 @@ void resample(
     if ( write0pixelsN < 0 ) write0pixelsN = 0; // smaller window selected
 
     if (resampleinput.dbow.linelo < overlap.linelo)
-      {
+    {
       WARNING << "RS_DBOW: min. line < overlap (writing: " << write0lines1
            << " lines with zeros before first resampled line).";
       WARNING.print();
-      }
+    }
     else
       overlap.linelo = resampleinput.dbow.linelo;       // correct it
     if (resampleinput.dbow.linehi > overlap.linehi)
-      {
+    {
       WARNING << "RS_DBOW: max. line > overlap (writing: " << write0linesN
            << " lines with zeros after last resampled line).";
       WARNING.print();
-      }
+    }
     else
       overlap.linehi = resampleinput.dbow.linehi;       // correct it
 
     if (resampleinput.dbow.pixlo < overlap.pixlo)
-      {
+    {
       WARNING << "RS_DBOW: min. pixel < overlap (writing: " << write0pixels1
            << " columns with zeros before first resampled column).";
       WARNING.print();
-      }
+    }
     else
       overlap.pixlo = resampleinput.dbow.pixlo;         // correct it
 
     if (resampleinput.dbow.pixhi > overlap.pixhi)
-      {
+    {
       WARNING << "RS_DBOW: max. pixel > overlap (writing: " << write0pixelsN
            << " columns with zeros after last resampled column).";
       WARNING.print();
-      }
+    }
     else
       overlap.pixhi = resampleinput.dbow.pixhi;         // correct it
 
-    } // adjust overlap
+  } // adjust overlap
 
 
   // ______ Buffersize output matrix ______
@@ -5615,10 +5643,10 @@ void resample(
   //const int32 nlines       = int32((BUFFERMEMSIZE/bigmatrices)/bytesperline); // buffer nlines
   const int32 nlines       = int32(ceil( (BUFFERMEMSIZE/bigmatrices)/bytesperline )); // buffer nlines [MA]
 
-    DEBUG << "BUFFERMEMSIZE: " << BUFFERMEMSIZE << ")";
-    DEBUG.print();
-    DEBUG << "nlines: " << nlines << ")";
-    DEBUG.print();
+  DEBUG << "BUFFERMEMSIZE: " << BUFFERMEMSIZE << ")";
+  DEBUG.print();
+  DEBUG << "nlines: " << nlines << ")";
+  DEBUG.print();
   // ______ Declare/allocate matrices ______
   matrix<complr4> BUFFER;                       // load after output is written
   matrix<complr4> RESULT(nlines,overlap.pixhi-overlap.pixlo+1);
@@ -5626,15 +5654,14 @@ void resample(
   matrix<real4> SLAVE_PIXEL(nlines,overlap.pixhi-overlap.pixlo+1); // for output final shifts [FvL]
   matrix<complr4> PART(Npoints,Npoints);
 
-#ifdef __USE_VECLIB_LIBRARY__
-  matrix<complr4> TMPRES(Npoints,1);
-  int32 Np = Npoints;                           // must be non-constant
-  int32 ONEint = 1;                             // must have pointer to 1
-  complr4 c4alpha(1.,0.0);
-  complr4 c4beta(0.0,0.0);
-  STUPID_cr4 ANS;                               // VECLIB struct return type
-#endif
-
+  #ifdef __USE_VECLIB_LIBRARY__
+    matrix<complr4> TMPRES(Npoints,1);
+    int32 Np = Npoints;                           // must be non-constant
+    int32 ONEint = 1;                             // must have pointer to 1
+    complr4 c4alpha(1.,0.0);
+    complr4 c4beta(0.0,0.0);
+    STUPID_cr4 ANS;                               // VECLIB struct return type
+  #endif
 
   // ====== Open output files ======
   ofstream ofile;
@@ -5658,39 +5685,39 @@ void resample(
   // ________ First write zero lines if appropriate (DBOW) ______
   const real4 zeror4(0); //[FvL]
   switch (resampleinput.oformatflag)
-    {
+  {
     case FORMATCR4:
-      {
+    {
       const complr4 zerocr4(0,0);
       for (int32 thisline=0; thisline<write0lines1; ++thisline)
         for (int32 thispixel=0;
              thispixel<int32(RESULT.pixels())+write0pixels1+write0pixelsN;
              ++thispixel)
-          {
+        {
           ofile.write((char*)&zerocr4,sizeofcr4);
           slavelineofile.write((char*)&zeror4,sizeofr4); //[FvL]
           slavepixelofile.write((char*)&zeror4,sizeofr4);
-          }
+        }
       break;
-      }
+    }
     case FORMATCI2:
-      {
+    {
       const compli16 zeroci16(0,0);
       for (int32 thisline=0; thisline<write0lines1; ++thisline)
         for (int32 thispixel=0;
              thispixel<int32(RESULT.pixels())+write0pixels1+write0pixelsN;
              ++thispixel)
-          {
+        {
           ofile.write((char*)&zeroci16,sizeofci16);
           slavelineofile.write((char*)&zeror4,sizeofr4); //[FvL]
           slavepixelofile.write((char*)&zeror4,sizeofr4);
-          }
+        }
       break;
-      }
+    }
     default:
       PRINT_ERROR("impossible format")
       throw(unhandled_case_error);
-    }
+  }
 
   // ______ Info ______
   INFO << "Overlap window: "
@@ -5713,18 +5740,18 @@ void resample(
   register int32 line;                          // loop counter master system
   register int32 pixel;                         // loop counter master system
   for (line=overlap.linelo; line<=overlap.linehi; line++)
-    {
+  {
     // ______ Progress messages ______
     if (((line-overlap.linelo)%tenpercent)==0)
-      {
+    {
       PROGRESS << "RESAMPLE: " << setw(3) << percent << "%";
       PROGRESS.print();
       percent += 10;
-      }
+    }
 
     // ====== Write RESULT to disk if it is full (write last bit at end) ======
     if (linecnt==int32(RESULT.lines())-1)              // ==nlines
-      {
+    {
       newbufferrequired = true;                 // do load slave from file
       DEBUG << "Writing slave: ["
            << line-RESULT.lines() << ":" << line-1 << ", "
@@ -5734,20 +5761,20 @@ void resample(
       linecnt = 0;
       // ______ Actually write ______
       switch (resampleinput.oformatflag)
-        {
+      {
         case FORMATCR4:
-          {
+        {
           // old, now first write zeropixels...: ofile << RESULT;
           const complr4 zerocr4(0.0, 0.0);
           for (int32 thisline=0; thisline<int32(RESULT.lines()); ++thisline)
-            {
+          {
             // ______ Write zero pixels at start ______
             for (int32 thispixel=0; thispixel<write0pixels1; ++thispixel)
-              {
+            {
               ofile.write((char*)&zerocr4,sizeofcr4);
               slavelineofile.write((char*)&zeror4,sizeofr4); //[FvL]
               slavepixelofile.write((char*)&zeror4,sizeofr4);
-              }
+            }
             // ______ WRITE the interpolated data per row ______
             ofile.write((char*)&RESULT[thisline][0],RESULT.pixels()*sizeof(RESULT(0,0)));
             slavelineofile.write((char*)&SLAVE_LINE[thisline][0],SLAVE_LINE.pixels()*sizeof(SLAVE_LINE(0,0))); //[FvL]
@@ -5759,9 +5786,9 @@ void resample(
               slavelineofile.write((char*)&zeror4,sizeofr4); //[FvL]
               slavepixelofile.write((char*)&zeror4,sizeofr4);
             }
-            }
-          break;
           }
+          break;
+        }
         case FORMATCI2:
           {
           const compli16 zeroci16(0,0);
@@ -5797,116 +5824,115 @@ void resample(
         default:
           PRINT_ERROR("impossible format")
           throw(unhandled_case_error);
-        }
-      }//end if linecnt
-
-    else // output buffer not full yet
-      {
-      linecnt++;
       }
+    }//end if linecnt
+    else // output buffer not full yet
+    {
+      linecnt++;
+    }
 
     // ====== Read slave buffer if justwritten || firstblock ======
     if (newbufferrequired==true)
-      {
+    {
       newbufferrequired = false;        // only load after output
                                         // written
       if (demassist)
+      {
+        pos = (streampos)(int64(line-master.currentwindow.linelo)*int64(master.currentwindow.pixels() + overlap.pixlo - master.currentwindow.pixlo));
+        pos = (streampos)(pos * int64(sizer8));
+        DeltaLfile.seekg(pos,ios::beg);                  // [MA] better to check for failbit
+        DeltaLfile.read((char*)&deltaL_dem,sizer8);
+
+        deltaL_poly = polyval(normalize(real4(line),minL,maxL),
+                              normalize(real4(overlap.pixlo),minP,maxP),
+                              cpmL,degree_cpmL);
+
+        real4 firstline_pixlo  = real4(line  + deltaL_dem + deltaL_poly + ms_az_timing_error_L);
+
+        pos = (streampos)(int64(line-master.currentwindow.linelo)*int64(master.currentwindow.pixels() + overlap.pixhi - master.currentwindow.pixlo));
+        pos = (streampos)(pos * int64(sizer8));
+        DeltaLfile.seekg(pos,ios::beg);
+        DeltaLfile.read((char*)&deltaL_dem,sizer8);
+
+        deltaL_poly = polyval(normalize(real4(line),minL,maxL),
+                              normalize(real4(overlap.pixhi),minP,maxP),
+                              cpmL,degree_cpmL);
+
+        real4 firstline_pixhi  = real4(line  + deltaL_dem + deltaL_poly + ms_az_timing_error_L);
+
+        int32 line2 = line + nlines - 1;
+
+        // LAST BUFFER FIX
+        // [DON] Davide Nitti,  the overrun of last line due to buffer nlines.
+        // start added by don
+        if (line2 > int32(master.currentwindow.linehi))
         {
-          pos = (streampos)((line-master.currentwindow.linelo)*master.currentwindow.pixels() + overlap.pixlo - master.currentwindow.pixlo);
-          pos = (streampos)(pos * sizer8);
-          DeltaLfile.seekg(pos,ios::beg);                  // [MA] better to check for failbit
-          DeltaLfile.read((char*)&deltaL_dem,sizer8);
+          DEBUG << "Variable line2: [ACTUAL Value: " << line2 << " - NEW Value: " << master.currentwindow.linehi << "]";
+          DEBUG.print();
+          line2 = master.currentwindow.linehi;
+        }
+        // end added by don
 
-          deltaL_poly = polyval(normalize(real4(line),minL,maxL),
-                                normalize(real4(overlap.pixlo),minP,maxP),
-                                cpmL,degree_cpmL);
+        pos = (streampos)(int64(line2-master.currentwindow.linelo)*int64(master.currentwindow.pixels() + overlap.pixlo - master.currentwindow.pixlo));
+        pos = (streampos)(pos * int64(sizer8));
+        DeltaLfile.seekg(pos,ios::beg);
+        DeltaLfile.read((char*)&deltaL_dem,sizeof(deltaL_dem)); // [MA] sizer8 --> sizeof(deltaL_dem)
 
-          real4 firstline_pixlo  = real4(line  + deltaL_dem + deltaL_poly + ms_az_timing_error_L);
-
-          pos = (streampos)((line-master.currentwindow.linelo)*master.currentwindow.pixels() + overlap.pixhi - master.currentwindow.pixlo);
-          pos = (streampos)(pos * sizer8);
-          DeltaLfile.seekg(pos,ios::beg);
-          DeltaLfile.read((char*)&deltaL_dem,sizer8);
-
-          deltaL_poly = polyval(normalize(real4(line),minL,maxL),
-                                normalize(real4(overlap.pixhi),minP,maxP),
-                                cpmL,degree_cpmL);
-
-          real4 firstline_pixhi  = real4(line  + deltaL_dem + deltaL_poly + ms_az_timing_error_L);
-
-
-          int32 line2 = line + nlines - 1;
-
-          // LAST BUFFER FIX
-          // [DON] Davide Nitti,  the overrun of last line due to buffer nlines.
-          // start added by don
-          if (line2 > int32(master.currentwindow.linehi))
-          {
-             DEBUG << "Variable line2: [ACTUAL Value: " << line2 << " - NEW Value: " << master.currentwindow.linehi << "]";
-             DEBUG.print();
-             line2 = master.currentwindow.linehi;
-          }
-          // end added by don
-
-          pos = (streampos)((line2-master.currentwindow.linelo)*master.currentwindow.pixels() + overlap.pixlo - master.currentwindow.pixlo);
-          pos = (streampos)(pos * sizer8);
-          DeltaLfile.seekg(pos,ios::beg);
-          DeltaLfile.read((char*)&deltaL_dem,sizeof(deltaL_dem)); // [MA] sizer8 --> sizeof(deltaL_dem)
-
-          if ( DeltaLfile.fail() ) { // [MA]  put it to a proper class
+        if ( DeltaLfile.fail() ) 
+        { // [MA]  put it to a proper class
           WARNING << "Failed to read position: " << pos  ; // coherence will be lost in lastbuffer
           WARNING.print() ;
           // exit(1)
-          }
-
-          deltaL_poly = polyval(normalize(real4(line2),minL,maxL),
-                                normalize(real4(overlap.pixlo),minP,maxP),
-                                cpmL,degree_cpmL);
-
-          real4 lastline_pixlo  = (real4)(line2  + deltaL_dem + deltaL_poly + ms_az_timing_error_L);
-
-          pos = (streampos)((line2-master.currentwindow.linelo)*master.currentwindow.pixels() + overlap.pixhi - master.currentwindow.pixlo);
-          pos = (streampos)(pos * sizer8);
-          DeltaLfile.seekg(pos,ios::beg);
-          DeltaLfile.read((char*)&deltaL_dem,sizer8);
-
-          deltaL_poly = polyval(normalize(real4(line2),minL,maxL),
-                                normalize(real4(overlap.pixhi),minP,maxP),
-                                cpmL,degree_cpmL);
-
-          real4 lastline_pixhi  = (real4)(line2  + deltaL_dem + deltaL_poly + ms_az_timing_error_L);
-
-          firstline = int32(ceil(min(firstline_pixlo,firstline_pixhi)))-Npoints;
-          lastline  = int32(ceil(min(lastline_pixlo,lastline_pixhi)))+Npoints;
         }
+
+        deltaL_poly = polyval(normalize(real4(line2),minL,maxL),
+                              normalize(real4(overlap.pixlo),minP,maxP),
+                              cpmL,degree_cpmL);
+
+        real4 lastline_pixlo  = (real4)(line2  + deltaL_dem + deltaL_poly + ms_az_timing_error_L);
+
+        pos = (streampos)(int64(line2-master.currentwindow.linelo)*int64(master.currentwindow.pixels() + overlap.pixhi - master.currentwindow.pixlo));
+        pos = (streampos)(pos * int64(sizer8));
+        DeltaLfile.seekg(pos,ios::beg);
+        DeltaLfile.read((char*)&deltaL_dem,sizer8);
+
+        deltaL_poly = polyval(normalize(real4(line2),minL,maxL),
+                              normalize(real4(overlap.pixhi),minP,maxP),
+                              cpmL,degree_cpmL);
+
+        real4 lastline_pixhi  = (real4)(line2  + deltaL_dem + deltaL_poly + ms_az_timing_error_L);
+
+        firstline = int32(ceil(min(firstline_pixlo,firstline_pixhi)))-Npoints;
+        lastline  = int32(ceil(min(lastline_pixlo,lastline_pixhi)))+Npoints;
+      }
       else
-        {
-          firstline = int32(ceil(min(line +
-                       polyval(normalize(real4(line),minL,maxL),
-                               normalize(real4(overlap.pixlo),minP,maxP),
-                                             cpmL,degree_cpmL),
-                       line +
-                       polyval(normalize(real4(line),minL,maxL),
-                               normalize(real4(overlap.pixhi),minP,maxP),
-                               cpmL,degree_cpmL))))
-                           - Npoints;
-          int32 line2 = line + nlines - 1;
-          lastline  = int32(ceil(min(line2 +
-                        polyval(normalize(real4(line2),minL,maxL),
-                                normalize(real4(overlap.pixlo),minP,maxP),
-                                cpmL,degree_cpmL),
-                                 line2 +
-                        polyval(normalize(real4(line2),minL,maxL),
-                                normalize(real4(overlap.pixhi),minP,maxP),
-                                cpmL,degree_cpmL))))
-                             + Npoints;
-        }
+      {
+        firstline = int32(ceil(min(line +
+                      polyval(normalize(real4(line),minL,maxL),
+                              normalize(real4(overlap.pixlo),minP,maxP),
+                                          cpmL,degree_cpmL),
+                      line +
+                      polyval(normalize(real4(line),minL,maxL),
+                              normalize(real4(overlap.pixhi),minP,maxP),
+                              cpmL,degree_cpmL))))
+                      - Npoints;
+        int32 line2 = line + nlines - 1;
+        lastline  = int32(ceil(min(line2 +
+                      polyval(normalize(real4(line2),minL,maxL),
+                              normalize(real4(overlap.pixlo),minP,maxP),
+                              cpmL,degree_cpmL),
+                            line2 +
+                      polyval(normalize(real4(line2),minL,maxL),
+                              normalize(real4(overlap.pixhi),minP,maxP),
+                              cpmL,degree_cpmL))))
+                            + Npoints;
+      }
 
       //const int32 FORSURE = 25;         // extend buffer by 2*FORSURE start/end
       int32 FORSURE = 25;         // extend buffer by 2*FORSURE start/end
       if ( master.ovs_az > 1 && master.ovs_az < 32  ) // [MA] To avoid any extreme value in the result file.
        {
-        FORSURE = FORSURE*master.ovs_az;              // [MA] the value should scale with oversampling otherwise it may fail.
+        FORSURE = int32(FORSURE*master.ovs_az);              // [MA] the value should scale with oversampling otherwise it may fail.
         DEBUG << "FORSURE: " << FORSURE << " extra lines before and after each buffer (oversampled)";
         DEBUG.print();
        }
@@ -5945,8 +5971,8 @@ void resample(
           {
 
             //pos = overlap.pixels() * ( line - overlap.linelo ) + pixel - overlap.pixlo;
-            pos = (streampos)((line-master.currentwindow.linelo)*master.currentwindow.pixels() + pixel - master.currentwindow.pixlo);
-            pos = (streampos)(pos * sizer8);
+            pos = (streampos)(int64(line-master.currentwindow.linelo)*int64(master.currentwindow.pixels() + pixel - master.currentwindow.pixlo));
+            pos = (streampos)(pos * int64(sizer8));
 
             DeltaLfile.seekg(pos,ios::beg);
             DeltaPfile.seekg(pos,ios::beg);
@@ -6087,99 +6113,94 @@ void resample(
        << "] (master coord. system)";
   DEBUG.print();
 
-   const int16 nofLinesBuf = 1;//DONOT change it to more than ONE line
- //  const int32 maxNofBuf = int32(floor(real4(linecnt)/real4(nofLinesBuf)));
+  const int16 nofLinesBuf = 1;//DONOT change it to more than ONE line
+  //  const int32 maxNofBuf = int32(floor(real4(linecnt)/real4(nofLinesBuf)));
   // ______ Actually write ______
   switch (resampleinput.oformatflag)
-    {
+  {
     case FORMATCR4:
-      {
-           
-     
-          //This buffer is of size 1 line and RESULT.pixels() plus the zero-border pixels
-       matrix<complr4> thisBuffer(nofLinesBuf,RESULT.pixels()+write0pixels1+write0pixelsN);
-       matrix<real4> thisBuffer_line(nofLinesBuf,SLAVE_LINE.pixels()+write0pixels1+write0pixelsN);
-       matrix<real4> thisBuffer_pixel(nofLinesBuf,SLAVE_PIXEL.pixels()+write0pixels1+write0pixelsN);
-       
-       DEBUG << "thisBuffer pixels : " << thisBuffer.pixels() << "\n";
-       DEBUG << "thisBuffer lines:   " << thisBuffer.lines();
-       DEBUG.print();
+    {
+      //This buffer is of size 1 line and RESULT.pixels() plus the zero-border pixels
+      matrix<complr4> thisBuffer(nofLinesBuf,RESULT.pixels()+write0pixels1+write0pixelsN);
+      matrix<real4> thisBuffer_line(nofLinesBuf,SLAVE_LINE.pixels()+write0pixels1+write0pixelsN);
+      matrix<real4> thisBuffer_pixel(nofLinesBuf,SLAVE_PIXEL.pixels()+write0pixels1+write0pixelsN);
+      
+      DEBUG << "thisBuffer pixels : " << thisBuffer.pixels() << "\n";
+      DEBUG << "thisBuffer lines:   " << thisBuffer.lines();
+      DEBUG.print();
        
       for (int32 thisline=0; thisline<=linecnt; thisline++)
-        {
-        //Use loop to create buffer not to write each pixel results
-        
-          //Write the results per line
-          //First allocate the results to the corresponding window
-           window windef(0,0,0,0);                       // default, thus copy to total matrix
-           
-           //The allocation window starts at 0 and ends at 0
-           // Starts at pixel write0pixels1 and ends at pixel RESULT.pixels()-1
-           //the rest are atutimatically set to zero
-           window win1(0, 0,write0pixels1, RESULT.pixels()-1);
-  
-           //Allocate the corresponding line to the buffer this buffer
-          thisBuffer.setdata(win1,RESULT.getrow(thisline),windef) ;
-          thisBuffer_line.setdata(win1,SLAVE_LINE.getrow(thisline),windef) ;
-          thisBuffer_pixel.setdata(win1,SLAVE_PIXEL.getrow(thisline),windef) ;
-
-            //Dump data to file
-            // ______ WRITE the interpolated data per row ______
-              ofile.write((char*)&thisBuffer[0][0],thisBuffer.pixels()*sizeof(thisBuffer(0,0)));
-              slavelineofile.write((char*)&thisBuffer_line[0][0],thisBuffer_line.pixels()*sizeof(thisBuffer_line(0,0))); //[FvL]
-              slavepixelofile.write((char*)&thisBuffer_pixel[0][0],thisBuffer_pixel.pixels()*sizeof(thisBuffer_pixel(0,0)));
-              
-           
-   
-        }
-      break;
-      }
-    case FORMATCI2:
       {
+        //Use loop to create buffer not to write each pixel results
+      
+        //Write the results per line
+        //First allocate the results to the corresponding window
+        window windef(0,0,0,0);                       // default, thus copy to total matrix
+         
+        //The allocation window starts at 0 and ends at 0
+        // Starts at pixel write0pixels1 and ends at pixel RESULT.pixels()-1
+        //the rest are atutimatically set to zero
+        window win1(0, 0,write0pixels1, RESULT.pixels()-1);
+  
+        //Allocate the corresponding line to the buffer this buffer
+        thisBuffer.setdata(win1,RESULT.getrow(thisline),windef) ;
+        thisBuffer_line.setdata(win1,SLAVE_LINE.getrow(thisline),windef) ;
+        thisBuffer_pixel.setdata(win1,SLAVE_PIXEL.getrow(thisline),windef) ;
+
+        //Dump data to file
+        // ______ WRITE the interpolated data per row ______
+        ofile.write((char*)&thisBuffer[0][0],thisBuffer.pixels()*sizeof(thisBuffer(0,0)));
+        slavelineofile.write((char*)&thisBuffer_line[0][0],thisBuffer_line.pixels()*sizeof(thisBuffer_line(0,0))); //[FvL]
+        slavepixelofile.write((char*)&thisBuffer_pixel[0][0],thisBuffer_pixel.pixels()*sizeof(thisBuffer_pixel(0,0)));
+      }
+      break;
+    }
+    case FORMATCI2:
+    {
       const compli16 zeroci16(0,0);
       compli16 castedresult;
-       matrix<compli16> thisBuffer(nofLinesBuf,RESULT.pixels()+write0pixels1+write0pixelsN);
-       matrix<real4> thisBuffer_line(nofLinesBuf,SLAVE_LINE.pixels()+write0pixels1+write0pixelsN);
-       matrix<real4> thisBuffer_pixel(nofLinesBuf,SLAVE_PIXEL.pixels()+write0pixels1+write0pixelsN);
+      matrix<compli16> thisBuffer(nofLinesBuf,RESULT.pixels()+write0pixels1+write0pixelsN);
+      matrix<real4> thisBuffer_line(nofLinesBuf,SLAVE_LINE.pixels()+write0pixels1+write0pixelsN);
+      matrix<real4> thisBuffer_pixel(nofLinesBuf,SLAVE_PIXEL.pixels()+write0pixels1+write0pixelsN);
        
-       DEBUG << "thisBuffer pixels : " << thisBuffer.pixels() << "\n";
-       DEBUG << "thisBuffer lines:   " << thisBuffer.lines();
-       DEBUG.print();
+      DEBUG << "thisBuffer pixels : " << thisBuffer.pixels() << "\n";
+      DEBUG << "thisBuffer lines:   " << thisBuffer.lines();
+      DEBUG.print();
        
       for (int32 thisline=0; thisline<=linecnt; thisline++)
-        {
+      {
         //Use loop to create buffer not to write the each pixel results
-         //Write the results per line
-          //First allocate the results to the corresponding window
-           window windef(0,0,0,0);                       // default, thus copy to total matrix
-           window win1(0, 0,write0pixels1, RESULT.pixels()-1);
+        //Write the results per line
+        //First allocate the results to the corresponding window
+        window windef(0,0,0,0);                       // default, thus copy to total matrix
+        window win1(0, 0,write0pixels1, RESULT.pixels()-1);
            
-            //The allocation window starts at 0 and ends at 0
-           // Starts at pixel write0pixels1 and ends at pixel RESULT.pixels()-1
-           //the rest are atutimatically set to zero
-           //Need loop for casted data
-          for (int32 thisPx = write0pixels1; thisPx<= RESULT.pixels()-1;thisPx++)
-           thisBuffer(0,thisPx) = cr4toci2(RESULT(thisline,thisPx-write0pixels1));
-              
+        //The allocation window starts at 0 and ends at 0
+        // Starts at pixel write0pixels1 and ends at pixel RESULT.pixels()-1
+        //the rest are atutimatically set to zero
+        //Need loop for casted data
+        for (int32 thisPx = write0pixels1; thisPx<= RESULT.pixels()-1;thisPx++)
+        {
+          thisBuffer(0,thisPx) = cr4toci2(RESULT(thisline,thisPx-write0pixels1));
+        }     
         
-          thisBuffer_line.setdata(win1,SLAVE_LINE.getrow(thisline),windef) ;
-          thisBuffer_pixel.setdata(win1,SLAVE_PIXEL.getrow(thisline),windef) ;
+        thisBuffer_line.setdata(win1,SLAVE_LINE.getrow(thisline),windef) ;
+        thisBuffer_pixel.setdata(win1,SLAVE_PIXEL.getrow(thisline),windef) ;
       
-            //Dump data to file
-            // ______ WRITE the interpolated data per row ______
-          
-              ofile.write((char*)&thisBuffer[0][0],thisBuffer.pixels()*sizeof(thisBuffer(0,0)));
-              slavelineofile.write((char*)&thisBuffer_line[0][0],thisBuffer_line.pixels()*sizeof(thisBuffer_line(0,0))); //[FvL]
-              slavepixelofile.write((char*)&thisBuffer_pixel[0][0],thisBuffer_pixel.pixels()*sizeof(thisBuffer_pixel(0,0)));
-         
-    
-        }
-      break;
+        //Dump data to file
+        // ______ WRITE the interpolated data per row ______
+        ofile.write((char*)&thisBuffer[0][0],thisBuffer.pixels()*sizeof(thisBuffer(0,0)));
+        slavelineofile.write((char*)&thisBuffer_line[0][0],thisBuffer_line.pixels()*sizeof(thisBuffer_line(0,0))); //[FvL]
+        slavepixelofile.write((char*)&thisBuffer_pixel[0][0],thisBuffer_pixel.pixels()*sizeof(thisBuffer_pixel(0,0)));
       }
+      break;
+    }
     default:
+    {
       PRINT_ERROR("impossible format")
       throw(unhandled_case_error);
     }
+  }
 
 
   // ====== Write last zero lines if appropriate (DBOW card) ======
@@ -6427,7 +6448,7 @@ void ms_timing_error(
   // this also helps our automated outlier detection and testing hopefully.
   // BK 15-Apr-2003
   // if the image is oversampled, then still use orig spacing
-  real4 SIGMAL = 0.15/master.ovs_az;// sigma in orig pixels
+  real4 SIGMAL = 0.15/real4(master.ovs_az);// sigma in orig pixels
   real4 SIGMAP = 0.10/master.ovs_rg;// seems range direction is better???
   INFO.print("Using a smaller sigma in range, because it seems that can be estimated better");
   INFO << "a priori std.dev offset vectors line direction [samples]:  " << SIGMAL;
@@ -6745,3 +6766,610 @@ void ms_timing_error(
 
   } // END rel_timing_error
 
+
+/****************************************************************
+ * SFS-SPEC                                                     *
+ *                                                              *
+ * Coregistration in sub-pixel domain based on the number of    *
+ *  singular points (residues) as evaluation criterion and      *
+ *  amplitude information for shape-from-shading.               *
+ *                                                              *
+ * input:                                                       *
+ *  - Master                                                    *
+ *  - Slave                                                     *
+ *  - Interferogram                                             *
+ *  - incidense angle                                           *
+ *  - information                                               *
+ * output:                                                      *
+ *  - updated interferogram 									*
+ *  - updated slave                                             * 
+ *                                                              *
+ *    Ryo Natsuaki, 5-Jun-2014                                  *
+ ****************************************************************/
+void sfsspec(
+        const input_gen        	&input_general,
+        const slcimage   		&minfo,
+        const slcimage   		&sinfo,
+        const BASELINE   		&baseline,
+        const productinfo       &interferogram
+        )
+{
+TRACE_FUNCTION("sfs-spec (Ryo Natsuaki)")
+// ______ Internal variables ______
+const real8 HEI  		= 0.0; 								// flat earth
+const int32 multiL      = interferogram.multilookL;         // multilookfactor in line dir.
+const int32 multiP      = interferogram.multilookP;         // multilookfactor in pixel dir.
+const int32 subscale    = 8;                              	// 1/8 sub-pixel co-registration is enough
+const real8 wlength 	= minfo.wavelength; 				// wave length
+const int32 lss = interferogram.win.lines();
+const int32 pss = interferogram.win.pixels(); 
+const int32 lsize = (lss/multiL); 	// line and pixel size of interferogram
+const int32 psize = (pss/multiP);
+const int32 ml0 = minfo.currentwindow.linelo;
+const int32 mp0 = minfo.currentwindow.pixlo;
+const int32 sl0 = sinfo.currentwindow.linelo;
+const int32 sp0 = sinfo.currentwindow.pixlo;
+const int32 scomp =sizeof(complr4);
+const window tmpw2(2,4,2,4);
+const int32 sfsmulti = int32(interferogram.sfsmulti);
+const int32 hsfsmulti = sfsmulti/2;
+PROGRESS << "opening " << interferogram.file <<".";
+PROGRESS << lsize << " x " << psize << " pixels interferogram.";
+PROGRESS.print();
+PROGRESS << "opening " << minfo.file <<", "<< sinfo.file <<".";
+PROGRESS << lss << " x " << pss << " pixels sar data.";
+PROGRESS.print();
+PROGRESS << "Multilook factor SFSSPEC_MULTILOOK = " << sfsmulti <<".";
+PROGRESS.print();
+// ___ parameters for calculation ___
+const int32 lantzsize = 3; 			// for interpolation
+const complr4 lantzsizec = 3.0; 	// mask size
+const int32 coutwin = 400; 		// cut out window if too large, shorten
+register int32 m,n, k,l, klcnt,ghcnt; 	// for counting
+
+// line movement of co-registration
+ofstream sfsspecmlineoutfile("sfsspec_mline.temp", ios::out | ios::trunc); 
+bk_assert(sfsspecmlineoutfile,"sfsspec_mline.temp",__FILE__,__LINE__);
+// pixel movement of co-registration
+ofstream sfsspecmpixeloutfile("sfsspec_mpixel.temp", ios::out | ios::trunc); 
+bk_assert(sfsspecmpixeloutfile,"sfsspec_mpixel.temp",__FILE__,__LINE__);
+sfsspecmpixeloutfile.close();
+sfsspecmlineoutfile.close();
+
+int32 gmarg = 10;	// for subwindow margin
+if (sfsmulti >4)
+	gmarg = sfsmulti*lantzsize;
+
+int32 glim = ((lsize-gmarg-1)/coutwin)+1;
+//int32 hlim = (int32)(ceil((double)(psize-gmarg)/(double)coutwin));
+const int gmaxarr=coutwin +gmarg+2; // this +2 is made for memory array matrix
+//const int hmaxarr=coutwin +gmarg+2;
+const int hmaxarr=psize+2;
+fstream ifcint;
+streampos ipos;
+ifcint.open(interferogram.file, ios::in | ios::out);
+real8 * p2r = new real8[hmaxarr];         // slant range
+int32 ** SPnummap = new int32* [gmaxarr]; // residue map
+real8 ** thetainc = new real8* [gmaxarr]; // incidence angle
+real8 ** alphainc = new real8* [gmaxarr]; // ground range gradient
+real8 ** betainc = new real8* [gmaxarr];  // ground azimuth gradient 
+for (m=0;m<gmaxarr;m++)
+{
+	SPnummap[m]=new int32[hmaxarr];
+	thetainc[m]=new real8[hmaxarr];
+	alphainc[m]=new real8[hmaxarr];
+	betainc[m]=new real8[hmaxarr];
+}
+real8 relyIFP[6][6]; 	    // reliability
+real8 dheight[6][6]; 	    // height gradient
+real8 dgrad[6][6]; 		// elevation gradient
+for (n=0;n<hmaxarr;n++)
+{
+	p2r[n] = HEI;
+	for (m=0;m<gmaxarr;m++)
+	{
+		thetainc[m][n] = HEI;
+		betainc[m][n]  = HEI;
+		alphainc[m][n] = HEI;
+		SPnummap[m][n] = 0;
+	}
+}
+// ___ begin to cutout subwindow ___
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic) private(ipos, klcnt, k,l,m,n,p2r,SPnummap,thetainc,alphainc,betainc,relyIFP,dheight,dgrad)
+#endif 
+for (ghcnt=0;ghcnt<glim;ghcnt++)
+{
+	DEBUG.print("begin iteration");
+	int32 gmax=coutwin +gmarg;
+	if ((ghcnt+1)*coutwin+gmarg>lsize)
+		gmax=lsize-(ghcnt*coutwin);
+	int32 hmax = psize;
+	// read master and slave for co-registration
+	matrix<complr4> MASTERNO;
+	matrix<complr4> SLAVENO;
+	window master;
+	window slave;
+	// cutout interferogram
+	matrix<complr4> IFP0(gmax,hmax); 	// original interferogram without orbital fringe (?)
+	matrix<complr4> IFPNO; 	// original interferogram with orbital fringe
+	matrix<int32> lineshift(gmax,hmax);
+	matrix<int32> pixelshift(gmax,hmax);
+	#ifdef _OPENMP
+	#pragma omp critical (readdata)
+	#endif
+	{
+	PROGRESS << ghcnt+1 << " out of " << glim << " subwindow." << gmax <<" x " << hmax <<" pixels.";
+	PROGRESS.print();
+	if (multiL ==1 && multiP ==1)
+	{
+		master.linelo=ml0 + ghcnt*coutwin;
+		master.linehi=ml0 + (ghcnt*coutwin + gmax) -1;
+		master.pixlo=mp0;
+		master.pixhi=mp0 + hmax -1;
+		slave.linelo=sl0 + ghcnt*coutwin;
+		slave.linehi=sl0 + (ghcnt*coutwin + gmax) -1;
+		slave.pixlo=sp0;
+		slave.pixhi=sp0 + hmax -1;
+		MASTERNO = minfo.readdata(master);
+		SLAVENO = sinfo.readdata(slave);
+		IFPNO=MASTERNO;
+		IFPNO*=conj(SLAVENO);
+		/*
+		for (k=0; k<gmax; k++)
+		{
+			ipos = (streampos)(((ghcnt*coutwin+k)*psize)* scomp);
+			ifcint.seekg(ipos,ios::beg);
+			complr4 tmpcurri;
+			for (l=0; l<hmax; l++)
+			{
+				ifcint.read((char*)&tmpcurri,scomp);
+				IFP0(k,l)=complr4(tmpcurri);
+			}
+		}
+		*/
+		
+		ipos = (streampos)(((ghcnt*coutwin)*psize)* scomp);
+		ifcint.seekg(ipos,ios::beg);
+		ifcint >> IFP0;
+		
+		DEBUG.print("original interferogram without multilook was made");
+	}
+	else
+	{
+		master.linelo=ml0 + ghcnt*coutwin*multiL;
+		master.linehi=ml0 + (ghcnt*coutwin + gmax)*multiL -1;
+		master.pixlo=mp0;
+		master.pixhi=mp0 + hmax*multiP -1;
+		slave.linelo=sl0 + ghcnt*coutwin*multiL;
+		slave.linehi=sl0 + (ghcnt*coutwin + gmax)*multiL -1;
+		slave.pixlo=sp0;
+		slave.pixhi=sp0 + hmax*multiP -1;
+		MASTERNO = minfo.readdata(master);
+		SLAVENO = sinfo.readdata(slave);
+		matrix<complr4>IFPNOt;
+		IFPNOt = MASTERNO;
+		IFPNOt*=conj(SLAVENO);
+		IFPNO=multilook(IFPNOt,multiL,multiP);
+		/*
+		for (k=0; k<gmax; k++)
+		{
+			ipos = (streampos)((ghcnt*coutwin+k)*psize* scomp);
+			ifcint.seekg(ipos,ios::beg);
+			complr4 tmpcurri;
+			for (l=0; l<hmax; l++)
+			{
+				ifcint.read((char*)&tmpcurri,scomp);
+				IFP0(k,l)=complr4(tmpcurri);
+			}
+		}
+		*/
+		
+		ipos = (streampos)(((ghcnt*coutwin)*psize)* scomp);
+		ifcint.seekg(ipos,ios::beg);
+		ifcint >> IFP0;
+		
+		DEBUG.print("original interferogram with multilook was made");
+	}
+	}
+
+	matrix<complr4> dIFP(6,6); 		// current phase gradient
+	matrix<complr4> dIFPq(6,6); 	// current phase gradient
+	for (n=0;n<hmax;n++)
+	{
+		p2r[n+2] = minfo.pix2range(n*multiP);
+		for (m=0;m<gmax;m++)
+		{
+			thetainc[m+2][n+2] = baseline.get_theta_inc((ghcnt*coutwin+m)*multiL,n*multiP,HEI);
+			betainc[m+2][n+2] = baseline.get_b((ghcnt*coutwin+m)*multiL,n*multiP,HEI);
+			alphainc[m+2][n+2] = baseline.get_alpha((ghcnt*coutwin+m)*multiL,n*multiP,HEI);
+			lineshift(m,n)=0;
+			pixelshift(m,n)=0;
+		}
+	}
+	int32 detectSPnum=0;
+	int32 prevtotSPnum=1;
+	real8 esdp=HEI;
+	real8 relytot=HEI;
+	// The number of iteration must be defined in some way
+	int32 curritr=0;
+	real8 dhtmp,stmp,esdptmp;
+	int32 shiftcandl = 0;
+	int32 shiftcandp = 0;
+	// while (detectSPnum < prevtotSPnum || curritr<2)
+	while (curritr<1)
+	{
+		++curritr;
+		prevtotSPnum=detectSPnum;
+		detectSPnum=0;
+		int32 totalSPnum=0;
+		int32 bratrely=0;
+		int32 bratcoregres=0;
+		// Accuracy depends on the interpolation method
+		matrix<complr4> IFP0q=IFP0;
+		for (klcnt=0;klcnt<(gmax-sfsmulti)*(hmax-sfsmulti);klcnt++)
+		{
+			k=klcnt/(hmax-sfsmulti);
+			l=klcnt%(hmax-sfsmulti);
+			window tmpw5(k,k+sfsmulti-1,l,l+sfsmulti-1);
+			matrix<complr4> IFP0qtmp =multilook(IFP0.getdata(tmpw5),sfsmulti,sfsmulti);
+			IFP0q(k,l)=IFP0qtmp(0,0);
+		}
+		DEBUG.print("reference interferogram was made");
+		for (n=1;n<hmax-1;n++)
+		{
+			for (m=1;m<gmax-1;m++)
+			{
+				window tmpw3(m-1,m+1,n-1,n+1);
+				SPnummap[m][n] = spnum(IFP0.getdata(tmpw3));
+			}
+		}
+		
+		for (n=3;n<hmax-5;n++)
+		{
+			for (m=3;m<gmax-5;m++)
+			{
+				//DEBUG <<"line 6035, "<<n <<", " <<m;
+				//DEBUG.print();
+				if (SPnummap[m][n]<1)
+				{
+					//DEBUG.print("no SP");
+					continue; 	// go to next pixel if there is no SP
+				}
+				++detectSPnum;
+				// use SP number for relyability
+				// phase gradient for albedo estimation
+				// incidence angle for albedo estimation
+				window tmpw4(m-3,m+4,n-3,n+4);
+				matrix<complr4> windIFP = IFP0.getdata(tmpw4);
+				matrix<complr4> INFERO = IFPNO.getdata(tmpw4);
+				matrix<complr4> windIFPq= IFP0q.getdata(tmpw4);
+				// Calculate reliability of each pixel from SP, incidence angle and phase gradient
+				relytot = HEI;
+				for (klcnt=0;klcnt<36;klcnt++)
+				{
+					k=klcnt%6;
+					l=klcnt/6;
+					//window tmpw(k,k+2,l,l+2);
+					relyIFP[k][l] = exp(-double(SPnummap[m-2+k][n-2+l]));
+					//dIFP(k,l) = polar(1.0,double(arg(windIFP(k+1,l+1))))*polar(1.0,-double(arg(windIFP(k+1,l+2))));
+					//dIFP(k,l) = polar(1.0,double(arg(windIFP(k+1,l+1))))*polar(1.0,-double(arg(windIFP(k+1,l))));
+					//dIFPq(k,l) = polar(1.0,double(arg(windIFPq(k+1,l+1))))*polar(1.0,-double(arg(windIFPq(k+1,l+2))));
+					dIFP(k,l) = polar(1.0,double(arg(windIFP(k+1,l+1))))*polar(1.0,-double(arg(windIFPq(k+1,l))));
+					dIFPq(k,l) = polar(1.0,double(arg(windIFPq(k+1,l+1))))*polar(1.0,-double(arg(windIFPq(k+1,l))));
+					if (klcnt==14) //(k==2 && l==2)
+					{
+						continue;
+					}
+					dheight[k][l] = (arg(dIFPq(k,l))*wlength*p2r[n+l]*sin(thetainc[m+k][n+l]))
+							/ (4.0*PI*betainc[m+k][n+l]*cos(thetainc[m+k][n+l]-alphainc[m+k][n+l]));
+					dhtmp = (p2r[n+l]-p2r[n+l+1])*cos(thetainc[m+k][n+l]);
+					dgrad[k][l] = atan(dheight[k][l]*tan(thetainc[m+k][n+l])/(tan(thetainc[m+k][n+l])*dhtmp+dheight[k][l]));
+					if (dgrad[k][l]>thetainc[m+k][n+l] || PI/2.0 + dgrad[k][l] < thetainc[m+k][n+l])
+					{
+						dgrad[k][l] = HEI;
+						relyIFP[k][l] = HEI; 	// in case of fore shortening or shadowing
+					}
+					else
+					{
+						relytot+=relyIFP[k][l];
+					}
+				}
+				if (relytot<20.0*exp(-3.0))
+				{
+					++bratrely;
+					//DEBUG.print("Low reliability of fore shortening");
+					continue; 	// if too many SPs, give up and goto next pixel.
+				}
+				// estimate phase gradient from neighbouring pixels
+				esdp = HEI;
+				for (klcnt=0;klcnt<36;klcnt++)
+				{
+					k=klcnt%6;
+					l=klcnt/6;
+					if (relyIFP[k][l] ==HEI ||(klcnt==14)) //(k==2 && l==2))
+					{
+						continue;
+					}
+					dhtmp = abs(windIFP(3,3))*cos(thetainc[m+k][n+l]-dgrad[k][l])*cos(thetainc[m+k][n+l]-dgrad[k][l])
+							/ (abs(windIFP(k+1,l+1))*sin(thetainc[m+k][n+l]-dgrad[k][l]));
+					stmp = thetainc[m+k][n+l]-asin((-dhtmp+sqrt(dhtmp*dhtmp+4))/2.0);
+					esdptmp = (4.0*PI*betainc[m+k][n+l]*sin(thetainc[m+k][n+l])*sin(stmp)
+							*(p2r[n+l]-p2r[n+l+1])*cos(thetainc[m+k][n+l]))
+									/((wlength*p2r[n+l])*sin(thetainc[m+k][n+l]-stmp));
+					if(esdptmp>thetainc[m+k][n+l] || PI/2.0 + esdptmp < thetainc[m+k][n+l])
+					{
+						relytot-=relyIFP[k][l];
+						relyIFP[k][l] = HEI; 	// in case of fore shortening or shadowing
+					}
+					else
+					{
+						esdp-= relyIFP[k][l]*esdptmp;
+					}
+				}
+				if (relytot<20.0*exp(-3.0))
+				{
+					++bratrely;
+					//DEBUG.print("Low reliability of estimation");
+					continue; 	// if too many unreliable estimated gradient, give up and goto next pixel.
+				}
+				//DEBUG.print("line 6166");
+				esdp /= relytot;
+				
+				complr4 ORBPHA = complr4(polar(1.0,double(arg(windIFP(3,3))))*polar(1.0,-double(arg(INFERO(3,3)))));
+				window slavetmp(m*multiL-lantzsize,(m+1)*multiL-1+lantzsize,n*multiP-lantzsize,(n+1)*multiP-1+lantzsize);
+				window mastertmp(m*multiL,(m+1)*multiL-1,n*multiP,(n+1)*multiP-1);
+				matrix<complr4> SLAVE = SLAVENO.getdata(slavetmp);
+				matrix<complr4> MASTER = MASTERNO.getdata(mastertmp);
+				// calc. coherence
+				//cohtmpt = multilook(MASTER*conj(MASTER),multiL,multiP);
+				//cohtmpmt = cohtmpt(0,0);
+				//cohtmpt = multilook(SLAVENO.getdata(mastertmp)*conj(SLAVENO.getdata(mastertmp)),multiL,multiP);
+				//cohtmpst = cohtmpt(0,0);
+				//COHERENCE = abs(INFERO(3,3))*abs(INFERO(3,3))/(abs(cohtmpmt)*abs(cohtmpst));
+				// end calc. coherence
+				relyIFP[2][2]*=exp(-abs(arg(polar(1.0,esdp) * complr8(conj(dIFP(2,2)))))); // for comparison
+				//relyIFP(2,2)*=exp(-abs(arg(polar(1.0,esdp) * complr8(conj(dIFP(2,2)))))); // for comparison
+				//relyIFP(2,2)*=exp((COHERENCE - 1.0)-abs(arg(polar(1.0,esdp) * complr8(conj(dIFP(2,2))))));  // in case of coherence
+				
+				matrix<complr4> lanczmsk;
+				matrix<complr4> MATCAND;
+				matrix<complr4> IFPcandtmp;
+				bool detectchange=false;
+				for (klcnt=0;klcnt<(subscale*2-1)*(subscale*2-1);klcnt++)
+				{
+					k=klcnt%(subscale*2-1) +1-subscale;
+					l=klcnt/(subscale*2-1) +1-subscale;
+					if (k==0 && l==0)
+					{
+						continue; 	// no shift no need to evaluate.
+					}
+					lanczmsk=mklanczmsk(lantzsizec, real4(k)/real4(subscale), real4(l)/real4(subscale));
+					MATCAND = convflt(SLAVE,lanczmsk);
+					IFPcandtmp = multilook(MASTER*conj(MATCAND),multiL,multiP);
+					matrix<complr4> windIFPSP = windIFP.getdata(tmpw2);
+					/* do we need to do something with coherence?
+					 * 	matrix<complr4>cohtmp = multilook(MATCAND*conj(MATCAND),multiL,multiP);
+					 * 	complr4 cohtmps = cohtmp(0,0);
+					 * 	real8 cohcand = abs(IFPcandtmp(0,0))*abs(IFPcandtmp(0,0))/(abs(cohtmpmt)*abs(cohtmps));
+					 */
+					// windIFP(3,3)=IFPcandtmp(0,0)*ORBPHA;
+					windIFPSP(1,1)=IFPcandtmp(0,0)*ORBPHA;
+					// IFPcand = polar(1.0,double(arg(windIFP(3,3))))*polar(1.0,-double(arg(windIFP(3,2))));
+					complr4 IFPcand = complr4(polar(1.0,double(arg(windIFPSP(1,1))))*polar(1.0,-double(arg(windIFPq(3,2)))));
+					real8 relyIFPcand = exp(-double(spnum(windIFPSP)))
+							*exp(-abs(arg(complr4(polar(1.0,double(esdp))) * conj(IFPcand))));
+					//*exp((cohcand - 1.0)-abs(arg(complr4(polar(1.0,double(esdp))) * conj(complr4(IFPcand))))); // in case of coherence
+					// if (cohcand > COHERENCE)
+					// if (relyIFPcand > relyIFP(2,2))
+					// if (cohcand > COHERENCE && spnum(windIFP.getdata(tmpw2)) < currSPnum )
+					// if (cohcand > COHERENCE && (spnum(windIFP.getdata(tmpw2)) < currSPnum && relyIFPcand > relyIFP(2,2)))
+					if (spnum(windIFPSP) < SPnummap[m][n] && relyIFPcand > relyIFP[2][2])
+					{
+						relyIFP[2][2]=relyIFPcand;
+						shiftcandl=k;
+						shiftcandp=l;
+						//COHERENCE = cohcand;
+						detectchange=true;
+					}
+				}
+				//DEBUG<<"first reliability was "<<relyIFP(2,2) ;
+				//DEBUG.print();
+				if (detectchange) 
+				{
+					++totalSPnum; 	// if the pixel replaced
+					// renew slave and interferogram
+					lanczmsk=mklanczmsk(lantzsizec, real4(shiftcandl)/real4(subscale), real4(shiftcandp)/real4(subscale));
+					MATCAND = convflt(SLAVE,lanczmsk);
+					IFPcandtmp = multilook(MASTER*conj(MATCAND),multiL,multiP)*ORBPHA;
+					IFP0(m,n) =IFPcandtmp(0,0);
+					SLAVENO.setdata(m*multiL,n*multiP,MATCAND);
+					lineshift(m,n)+=shiftcandl;
+					pixelshift(m,n)+=shiftcandp;
+					for (l=n-1;l<n+2;l++)
+					{
+						for (k=m-1;k<m+2;k++)
+						{
+							window tmpw3(k-1,k+1,l-1,l+1);
+							SPnummap[k][l] = spnum(IFP0.getdata(tmpw3));
+						}
+					}
+				}
+				else //(shiftcandl ==0 && shiftcandp == 0 )
+				{
+					++bratcoregres;
+					//DEBUG.print("shift was 0, 0");
+					//continue; // if original one is the best, goto next one.
+				}
+			}
+		}
+		#ifdef _OPENMP
+		#pragma omp critical (writestatus)
+		#endif
+		{
+		PROGRESS << ghcnt+1<<": Iteration "<<curritr << ": tried " << detectSPnum << " pixels and " << totalSPnum <<" pixels replaced. ";
+		PROGRESS.print();
+		PROGRESS << bratrely << "pixels remained for low reliability, "<< bratcoregres << "pixels had no candidate.";
+		PROGRESS.print();
+		}
+	}
+
+	#ifdef _OPENMP
+	#pragma omp critical (writeresult)
+	#endif
+	{
+		
+		for (k=3;k<gmax-5;k++)
+		{
+			ifcint.seekp((streampos)(((ghcnt*coutwin+k)*psize +3)* scomp),ios::beg);
+			for (l=3;l<hmax-5;l++)
+			{
+				ifcint.write((char*)&IFP0(k,l),scomp);
+			}
+		}
+		ofstream sfsspecmlineoutfile("sfsspec_mline.temp", ios::in | ios::out);
+		ofstream sfsspecmpixeloutfile("sfsspec_mpixel.temp", ios::in | ios::out);
+		if (ghcnt>0)
+		{
+			for (k=3;k<gmax;k++)
+			{
+				sfsspecmlineoutfile.seekp((streampos)(((ghcnt*coutwin+k)*psize)* sizeof(int32)),ios::beg);
+				sfsspecmpixeloutfile.seekp((streampos)(((ghcnt*coutwin+k)*psize)* sizeof(int32)),ios::beg);
+				for (l=0;l<hmax;l++)
+				{
+					sfsspecmlineoutfile.write((char*)&lineshift(k,l),sizeof(int32));
+					sfsspecmpixeloutfile.write((char*)&pixelshift(k,l),sizeof(int32));
+				}
+			}
+		}
+		else
+		{
+			for (k=0;k<gmax;k++)
+			{
+				for (l=0;l<hmax;l++)
+				{
+					sfsspecmlineoutfile.write((char*)&lineshift(k,l),sizeof(int32));
+					sfsspecmpixeloutfile.write((char*)&pixelshift(k,l),sizeof(int32));
+				}
+			}
+		}
+		sfsspecmpixeloutfile.close();
+		sfsspecmlineoutfile.close();
+		fstream ofslave;
+		ofslave.open(sinfo.file, ios::in|ios::out);
+		for (k=(3)*multiL;k<(gmax-4)*multiL-1;k++)
+		{
+			ofslave.seekp((streampos)((((ghcnt*coutwin)*multiL+k)*pss + 3*multiP)* scomp),ios::beg);
+			for (l=(3)*multiP;l<(hmax-4)*multiP-1;l++)
+			{
+				ofslave.write((char*)&SLAVENO(k,l),scomp);
+			}
+		}
+		ofslave.close();
+		
+		/*
+		window ifptmp(3,gmax-5,0,hmax-1);
+		matrix<complr4> IFPw = IFP0.getdata(ifptmp);
+		ifcint.seekp((streampos)(((ghcnt*coutwin+3)*psize)* scomp),ios::beg);
+		ifcint << IFPw;
+		ifcint << std::flush;
+		DEBUG.print("Interferogram renewed");
+		ofstream sfsspecmlineoutfile("sfsspec_mline.temp", ios::in | ios::out);
+		ofstream sfsspecmpixeloutfile("sfsspec_mpixel.temp", ios::in | ios::out);
+		if (ghcnt<1)
+		{
+			sfsspecmpixeloutfile << pixelshift;
+			sfsspecmlineoutfile << lineshift;
+		}
+		else
+		{
+			matrix<int32> pixshiftw = pixelshift.getdata(ifptmp);
+			sfsspecmpixeloutfile.seekp((streampos)(((ghcnt*coutwin+3)*psize)*sizeof(int32)),ios::beg);
+			sfsspecmpixeloutfile << pixshiftw;
+			matrix<int32> linshiftw = lineshift.getdata(ifptmp);
+			sfsspecmlineoutfile.seekp((streampos)(((ghcnt*coutwin+3)*psize)*sizeof(int32)),ios::beg);
+			sfsspecmlineoutfile << linshiftw;
+		}
+		sfsspecmpixeloutfile.close();
+		sfsspecmlineoutfile.close();
+		DEBUG.print("Movement renewed");
+		fstream ofslave;
+		ofslave.open(sinfo.file, ios::in | ios::out);
+		ofslave.seekp((streampos)((((ghcnt*coutwin+3)*multiL)*pss)* scomp),ios::beg);
+		for ( int32 buffer=3; buffer<(gmax-4); ++buffer)
+		{
+			window sltmp(buffer*multiL,(buffer+1)*multiL-1,0,hmax*multiP-1);
+			ofslave << SLAVENO.getdata(sltmp);
+		}
+		ofslave.close();
+		*/
+		DEBUG.print("Slave renewed");
+	}
+}
+ifcint.close();
+delete[] p2r;
+for (m=0;m<gmaxarr;m++)
+{
+	delete[] SPnummap[m];
+	delete[] thetainc[m];
+	delete[] alphainc[m];
+	delete[] betainc[m];
+}
+delete[] SPnummap;
+delete[] thetainc;
+delete[] alphainc;
+delete[] betainc;
+PROGRESS.print("SFS-SPEC finished!");
+} // END SFS-SPEC
+
+
+
+/************************************
+ * spnum subroutine of SFS-SPEC. 	*
+ * find and count number of SP 		* 
+ ************************************/
+int32 spnum(
+        const matrix<complr4>  	&IFP
+        )
+{
+uint k = IFP.lines();
+uint l = IFP.pixels();
+matrix <real8> IFParg(k,l);
+int32 result = 0;
+real8 resnum0,resnum1,resnum2,resnum3;
+
+for (register uint p=0; p<k; p++)
+{
+	for (uint q=0; q<l; q++)
+		IFParg(p,q) = arg(IFP(p,q));
+}
+for (register uint y=0; y<k-2; y++)
+{
+	for (register uint x=0; x<l-2; x++)
+	{
+		resnum0 = IFParg(y+1,x) - IFParg(y,x);
+		if (resnum0>PI)
+			resnum0-=2.0*PI;
+		else if (resnum0<-PI)
+			resnum0+=2.0*PI;
+		resnum1 = IFParg(y+1,x+1) - IFParg(y+1,x);
+		if (resnum1>PI)
+			resnum1-=2.0*PI;
+		else if (resnum1<-PI)
+			resnum1+=2.0*PI;
+		resnum2 = IFParg(y,x+1) - IFParg(y+1,x+1);
+		if (resnum2>PI)
+			resnum2-=2.0*PI;
+		else if (resnum2<-PI)
+			resnum2+=2.0*PI;
+		resnum3 = IFParg(y,x) - IFParg(y,x+1);
+		if (resnum3>PI)
+			resnum3-=2.0*PI;
+		else if (resnum3<-PI)
+			resnum3+=2.0*PI;
+		if (abs(resnum0+resnum1+resnum2+resnum3) > 1.0)
+			++result;
+	}
+}
+return result;
+} // end counting SP num

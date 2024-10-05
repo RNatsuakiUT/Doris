@@ -223,6 +223,15 @@ void ms_timing_error(
         int32                   &coarse_orbit_offsetL,
         int32                   &coarse_orbit_offsetP);
 
+// ______SFS-SPEC_______
+void sfsspec(
+        const input_gen        	&input_general,
+        const slcimage   		&minfo,
+        const slcimage   		&sinfo,
+        const BASELINE   		&baseline,
+        const productinfo       &interferogram
+        );
+
 // ______Interpolation kernals______
 matrix<real4> cc4(const  matrix<real4> &x);
 matrix<real4> cc6(const  matrix<real4> &x);
@@ -235,6 +244,9 @@ matrix<real4> tri(const  matrix<real4> &x);
 matrix<real4> knab(const matrix<real4> &x, const real4 CHI, const int32 N);
 // ___ raised cosine: oversampling factor of signal CHI, number of points N ___
 matrix<real4> rc_kernel(const matrix<real4> &x, const real4 CHI, const int32 N);
+
+// ___ subroutine of SFS-SPEC ___
+int32 spnum(const matrix<complr4>  	&IFP);
 
 #endif // COREGISTRATION_H
 

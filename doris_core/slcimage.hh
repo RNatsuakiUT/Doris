@@ -118,8 +118,8 @@ class slcimage                          // info per image
     real4         realoffsetL;            // initial offset pixels
     real4         realoffsetP;            // initial offset lines
     
-    int32       ovs_az;                 // oversampling of SLC
-    //real8       ovs_az;                 // oversampling of SLC, multilook test [TODO]
+    //int32       ovs_az;                 // oversampling of SLC
+    real8       ovs_az;                 // oversampling of SLC, multilook test [TODO]
     int32       ovs_rg;                 // oversampling of SLC
 
     int32       az_timing_error;        // [FvL]

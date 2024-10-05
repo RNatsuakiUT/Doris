@@ -322,6 +322,30 @@ matrix<real4> magnitude(
   } // END magnitude
 
 
+/****************************************************************
+ *    logmagnitude                                              *
+ * Computes Log10 of "1+magnitude" of complex matrix            *
+ *                                                              *
+ *    Ryo Natsuaki, 17-Nov-2021                                  *
+ ****************************************************************/
+matrix<real4> logmagnitude(
+        const matrix<complr4> &A)
+  {
+#ifdef __DEBUGMAT2
+  matDEBUG.print("logmagnitude.");
+#endif
+// _____Ensure stride one in memory______
+  matrix<real4> Result(A.lines(),A.pixels());
+  complr4 *pntA = A[0];
+  real4 *pntR = Result[0];
+  for (register int32 i=0; i<Result.size(); i++)
+    {
+      *(pntR++) = log10(sqrt(sqr((*pntA).real()) + sqr((*pntA).imag())) +1);
+        pntA++;                                         // [MA]
+    }
+  return Result;
+  } // END logmagnitude
+
 
 /****************************************************************
  *    intensity                                                 *
@@ -2532,7 +2556,86 @@ matrix<real4> oversample(
   }
 
 
+/****************************************************************
+ * B=downsample(A, factorrow, factorcol);                       *
+ *    2 factors possible, extrapolation at end.                 *
+ *    no vectors possible.                                      *
+ *    modified from oversample: Bert Kampes, 28-Mar-2000        *
+ *    R. Natsuaki, 11-Jun-2014 									*
+ ****************************************************************/
+matrix<complr4> downsample(
+        const matrix<complr4> &AA,// not by reference, changed by fft
+        uint factorrow,
+        uint factorcol)
+  {
+#ifdef __DEBUGMAT2
+  matDEBUG.print("downsample");
+#endif
+  matrix<complr4> A = AA;// copy, AA is changed by in-place fft;
+  const uint l      = A.lines();
+  const uint p      = A.pixels();
+  const uint L2     = l/factorrow;      // numrows of output matrix
+  const uint P2     = p/factorcol;      // columns of output matrix
+  const uint halfl  = L2/2;
+  const uint halfp  = P2/2;
 
+  #ifdef __DEBUGMAT1
+  if (A.isvector())
+    matERROR.print("DOWNSAMPLE: only 2d matrices.");
+  if (!myispower2(l) && factorrow != 1)
+    matERROR.print("DOWNSAMPLE: numlines != 2^n.");
+  if (!myispower2(p) && factorcol != 1)
+    matERROR.print("DOWNSAMPLE: numcols != 2^n.");
+  #endif
+
+  #ifdef __GNUC__
+  const real4 half = 0.5;
+  #else
+  const complr4 half = complr4(0.5);
+  #endif
+  matrix<complr4> Res(L2,P2);
+  register int32 i,j;
+  if (factorrow==1)
+    {
+    fft(A,2);                           // 1d fourier transform per row
+    const window winA1(0, l-1,   0, halfp-1); 	// down sampling windows
+    const window winA2(0, l-1, p-halfp, p-1);
+    const window winR2(0, l-1, P2-halfp, P2-1);
+    Res.setdata(winA1,A,winA1); 
+    Res.setdata(winR2,A,winA2); 
+    ifft(Res,2);                        // inverse fft per row
+    }
+  else if (factorcol==1)
+    {
+    fft(A,1);                           // 1d fourier transform per column
+    const window winA1(0, halfl-1,   0, p-1); 	// down sampling windows
+    const window winA2(l-halfl, l-1, 0, p-1);
+    const window winR2(L2-halfl, L2-1,  0, p-1);
+    Res.setdata(winA1,A,winA1); 
+    Res.setdata(winR2,A,winA2); 
+    ifft(Res,1);                        // inverse fft per row
+    }
+  else
+    {
+    fft2d(A);                           // A=fft2d(A)
+    const window winA1(0, halfl-1,     0, halfp-1); 	// down sampling windows
+    const window winA2(0, halfl-1,   p-halfp, p-1);
+    const window winA3(l-halfl, l-1,   0, halfp-1);
+    const window winA4(l-halfl, l-1, p-halfp, p-1);
+    const window winR2(0, halfl-1,     P2-halfp, P2-1);
+    const window winR3(L2-halfl, L2-1,     0, halfp-1);
+    const window winR4(L2-halfl, L2-1, P2-halfp, P2-1);
+    Res.setdata(winA1,A,winA1); 
+    Res.setdata(winR2,A,winA2); 
+    Res.setdata(winR3,A,winA3); 
+    Res.setdata(winR4,A,winA4); 
+    ifft2d(Res);
+    }
+  Res /= real4(factorrow*factorcol);
+  return Res;
+  } // END downsample
+
+  
 /****************************************************************
  * dotmult(complr4* pnt, const matrix<real4>&B, stride)         *
  * multiply memory pointed to by content of B, with mem. stride *

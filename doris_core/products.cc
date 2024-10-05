@@ -2392,11 +2392,11 @@ void dinsar(
       masterpos[i]       = masterorbit.getxyz(m_tazi);
       }
     // ______ Do it the *slow* way, get 3d positions slaves ______
-    lp2xyz(line,pixel,ellips,master,masterorbit,pointpos[i]);           // fill pointpos
-    xyz2orb(defoslavepos[i],defoslave,defoorbit,pointpos[i]);           // fill defopos
-    xyz2orb(toposlavepos[i],toposlave,toposlaveorbit,pointpos[i]);      // fill toposlavepos
+    lp2xyz(line,pixel,ellips,master,masterorbit,pointpos[i], 10, 1e-6);           // fill pointpos
+    xyz2orb(defoslavepos[i],defoslave,defoorbit,pointpos[i], 10, 1e-10);           // fill defopos
+    xyz2orb(toposlavepos[i],toposlave,toposlaveorbit,pointpos[i], 10, 1e-10);      // fill toposlavepos
     if (FOURPASS==true) // fill topomasterpos
-      xyz2orb(topomasterpos[i],topomaster,topomasterorbit,pointpos[i]);
+      xyz2orb(topomasterpos[i],topomaster,topomasterorbit,pointpos[i], 10, 1e-10);
     else // 3 pass, same topomaster as defomaster...
       topomasterpos[i] = masterpos[i];
 

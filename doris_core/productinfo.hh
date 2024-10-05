@@ -68,6 +68,7 @@ class productinfo                               // info on 'products'
     window        win;                            // current window, line(1:N) etc
     uint          multilookL;                     // multilookfactor in line (azi) dir.
     uint          multilookP;                     // multilookfactor in pixel (ra) dir.
+    uint          sfsmulti; 					  // multilookfactor for sfs-spec [RN]
     // ______ file format ______
     int16         formatflag;                     // current read formatflag
 
@@ -79,6 +80,7 @@ class productinfo                               // info on 'products'
       formatflag = -1;// undefined
       multilookL =  1;
       multilookP =  1;
+      sfsmulti = 1;
       } // rest ==0
 
     // ______ fill it from info in resultfiles ______
@@ -94,6 +96,7 @@ class productinfo                               // info on 'products'
         multilookL = X.multilookL;
         multilookP = X.multilookP;
         formatflag = X.formatflag;
+        sfsmulti = X.sfsmulti;
         }
       return *this;
       };

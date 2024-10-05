@@ -6954,7 +6954,8 @@ struct badtriang *badtri;
     length *= multiplier;
   }
   /* `length' is approximately squareroot(2.0) to what exponent? */
-  exponent = int(2.0 * exponent + (length > SQUAREROOTTWO));  // [MA] int casting
+  //exponent = int(round(2.0 * exponent + (length > SQUAREROOTTWO)));  // [MA] int casting
+  exponent = (int)(round(2.0 * exponent + (length > SQUAREROOTTWO)));  // [RN] round first prior to int casting
   /* `exponent' is now in the range 0...2047 for IEEE double precision.   */
   /*   Choose a queue in the range 0...4095.  The shortest edges have the */
   /*   highest priority (queue 4095).                                     */

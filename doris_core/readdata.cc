@@ -144,6 +144,7 @@ void readvolume(
                         numvol;                 // volfile...
   char                  c4dummy[5],             // correctly 5 for \0
                         c8date[9],
+                        c8dummy[9],
                         c8time[9],
                         c8agency[9],            // correctly 9 for \0
                         c8nlins[9],             // correctly 9 for \0
@@ -185,7 +186,8 @@ void readvolume(
     volumefile.read((char*)&c16setid,sizea16);          // volume set ID
     c16setid[16]='\0';
 
-    if (readfiles_arg.sensor_id==SLC_ALOS)   // added by don
+    // Following satellites have common physical volume ID. Separate with processing date
+    if ((readfiles_arg.sensor_id==SLC_ALOS) || (readfiles_arg.sensor_id==SLC_ALOS2) || (readfiles_arg.sensor_id==SLC_ALOS4) || (readfiles_arg.sensor_id==SLC_ASNARO2) || (readfiles_arg.sensor_id==SLC_Strix))   // added by don [RN]
       {
       char c8logvoltime[9];
       volumefile.seekg(120,ios::beg);
@@ -278,7 +280,23 @@ void readvolume(
 
   // if (readfiles_arg.sensor_id!=SLC_RSAT)
   // Modified by LG for reading ALOS Fine
-  if ((readfiles_arg.sensor_id!=SLC_RSAT) && (readfiles_arg.sensor_id!=SLC_ALOS) )
+  // Modified by RN for ALOS and ALOS-2
+  if (readfiles_arg.sensor_id==SLC_ALOS)
+  {
+	  INFO << "This ALOS data contains "<< c4dummy << " records.";
+      INFO.print();
+  }
+  else if (readfiles_arg.sensor_id==SLC_ALOS2)
+  {
+	  INFO << "This ALOS-2 data contains "<< c4dummy << " records.";
+      INFO.print();
+  }
+  else if (readfiles_arg.sensor_id==SLC_ALOS4)
+  {
+	  INFO << "This ALOS-4 PALSAR-3 data contains "<< c4dummy << " records.";
+      INFO.print();
+  }
+  else if (readfiles_arg.sensor_id!=SLC_RSAT)
     {
     if (numpointrec!=2)
       {
@@ -296,8 +314,8 @@ void readvolume(
   volumefile.read((char*)&c4dummy,sizei4);              // #records in vol.
   c4dummy[4]='\0';
   numrec = atoi(c4dummy);
-  // Modified by LG for reading ALOS Fine
-  if (readfiles_arg.sensor_id == SLC_ALOS)
+  // Modified by LG for reading ALOS Fine, + ALOS, Strix series data [RN]
+  if ((readfiles_arg.sensor_id == SLC_ALOS) || (readfiles_arg.sensor_id == SLC_ALOS2) || (readfiles_arg.sensor_id==SLC_ALOS4) || (readfiles_arg.sensor_id == SLC_Strix))
   {
           if (numrec!=1)
       {
@@ -323,7 +341,7 @@ void readvolume(
   volumefile.read((char*)&c4dummy,sizei4);              // #vol.
   c4dummy[4]='\0';
   numvol = atoi(c4dummy);
-  if (readfiles_arg.sensor_id!=SLC_RSAT)
+  if ((readfiles_arg.sensor_id!=SLC_RSAT) || (readfiles_arg.sensor_id == SLC_ALOS))
     if (numvol!=1)
       {
       ERROR << "readvolume: number of volumes = \""
@@ -371,7 +389,39 @@ void readvolume(
 
   // --- RECORD 3 ---
   DEBUG.print("record 3 of volume file.");
-  const uint startrec3 = lenrec1 + lenrec2;
+  // In case of ALOS and ALOS-2 ScanSAR / multipol. mode [RN]
+  uint startrec3,j;
+  if (((readfiles_arg.sensor_id == SLC_ALOS)||(readfiles_arg.sensor_id == SLC_ALOS2)||(readfiles_arg.sensor_id == SLC_ALOS4)) && numpointrec>3)
+  {
+  // ______Open files______ 
+    ifstream datfile;
+    openfstream(datfile,readfiles_arg.datfile);
+    bk_assert(datfile,readfiles_arg.datfile,__FILE__,__LINE__);
+    INFO.print("This ALOS / ALOS-2 data is multiple pol. and/or ScanSAR.");
+    uint                  numlined;                // length of lines in datfile
+    datfile.seekg(236,ios::beg);                   // SAR Related data
+    datfile.read((char*)&c8dummy,sizei8);
+    c8dummy[8]='\0';
+    numlined = atoi(c8dummy);                      // number of lines
+    datfile.close();
+    
+    for (j=1; j<numpointrec-1; j++)                // try some times
+    {
+    	  volumefile.seekg(lenrec1+lenrec2*j+100,ios::beg);             // numlines for checking
+    	  volumefile.read((char*)&c8nlins,sizei8);
+    	  c8nlins[8]='\0';
+    	  if (numlined==atoi(c8nlins)-1)
+    		  break;
+    }
+    startrec3= lenrec1 + lenrec2*j;
+    INFO<<"number of lines "<< numlined<<" matched at "<<j<<" th record.";
+    INFO.print();
+  }
+  else
+	  startrec3 = lenrec1 + lenrec2;
+  // end of scene center of ALOS and ALOS-2
+
+
   volumefile.seekg(startrec3,ios::beg);
   volumefile.read((char*)&rec_seq,sizeb4);// record number
   rec_seq = ntohl(rec_seq);// Bert Kampes, 07-Apr-2005
@@ -409,7 +459,15 @@ void readvolume(
 
 
   // --- RECORD 4 ---
-  uint startrec4 = lenrec1 + lenrec2 + lenrec3;
+  uint startrec4 = 0;
+  if ((readfiles_arg.sensor_id == SLC_ALOS) || (readfiles_arg.sensor_id == SLC_ALOS2) || (readfiles_arg.sensor_id == SLC_ALOS4))
+  {
+	  startrec4 = lenrec1 + (lenrec2* numpointrec);	  // skip pointer records (#of pol.+2)[RN]
+  }
+  else
+  {
+	  startrec4 = lenrec1 + lenrec2 + lenrec3;
+  }
   //if (readfiles_arg.sensor_id==SLC_RSAT)
   //   startrec4=startrec4+360;// skip trailer record for RSAT
   DEBUG.print("record 4 of volume file.");
@@ -442,19 +500,22 @@ void readvolume(
     //WARNING.print("This is not the expected text record, trying next one.")
     readfiles_arg.sar_processor = SARPR_ATL;// set determined sar processor/format
 
-        // Modified by LG for reading ALOS Fine
-        if ( (readfiles_arg.sensor_id == SLC_ALOS) && (int(rec_type)==192) )
-                         readfiles_arg.sar_processor = SARPR_JAX;
-        else if (readfiles_arg.sensor_id!=SLC_RSAT)
+    // Modified by LG for reading ALOS Fine
+    if ( (int(rec_type)==192) )
       {
-      DEBUG.print("This is NOT the expected text record with code {18,63,18,18}");
-      DEBUG.print("I assume in following Atlantis processed data (ERS or RSAT).");
-      DEBUG.print("If this is not the case, please contact doris_users@tudelft.nl");
+        readfiles_arg.sar_processor = SARPR_JAX; // Added case for ALOS2/4 [RN]
+      	DEBUG.print("JAXA ALOS series-like record found. Expected text record with code {18,192,18,18}");
       }
-    volumefile.seekg(startrec4+8,ios::beg);             //  text record
-    volumefile.read((char*)&lenrec4,sizeb4);            // length of record4
-    lenrec4   = ntohl(lenrec4); // bk 6 jul 2000, byteorder x86 machines.
-    startrec4 = startrec4 + lenrec4;// hopefully there is a next record
+    else if (readfiles_arg.sensor_id!=SLC_RSAT)
+      {
+    	DEBUG.print("This is NOT the expected text record with code {18,63,18,18}");
+      DEBUG.print("I assume in following Atlantis processed data (ERS or RSAT).");
+    	DEBUG.print("If this is not the case, please contact doris_users@tudelft.nl");
+      volumefile.seekg(startrec4+8,ios::beg);             //  text record
+    	volumefile.read((char*)&lenrec4,sizeb4);            // length of record4
+      lenrec4   = ntohl(lenrec4); // bk 6 jul 2000, byteorder x86 machines.
+    	startrec4 = startrec4 + lenrec4;// hopefully there is a next record
+      }
     }
   // ---end test for ATLANTIS (RSAT) -------------------------------------------
 
@@ -591,6 +652,22 @@ void readvolume(
     scratchresfile
       << "\nProduct type specifier: \t\t\t"
       <<  "PRODUCT ALOS";// else it is just "PRODUCT:", but it is used in CROP step
+  else if (readfiles_arg.sensor_id==SLC_ALOS2)
+	scratchresfile
+	  << "\nProduct type specifier: \t\t\t"
+	  <<  "PRODUCT ALOS-2"; // added by [RN]
+  else if (readfiles_arg.sensor_id==SLC_ALOS4)
+	scratchresfile
+	  << "\nProduct type specifier: \t\t\t"
+	  <<  "PRODUCT ALOS-4"; // added by [RN]
+  else if (readfiles_arg.sensor_id==SLC_ASNARO2)
+	scratchresfile
+	  << "\nProduct type specifier: \t\t\t"
+	  <<  "PRODUCT ASNARO-2"; // added by [RN]
+  else if (readfiles_arg.sensor_id==SLC_Strix)
+	scratchresfile
+	  << "\nProduct type specifier: \t\t\t"
+	  <<  "PRODUCT STRIX"; // added by [RN]
   // end_added_by_don
   else
     scratchresfile
@@ -637,7 +714,7 @@ void readvolume(
  * Included RSAT format based on document of ASF                *
  #%// Bert Kampes, 03-Aug-2004                                  *
  #%// Davide Nitti (Don), 11-Nov-2008  fixes for doppler        *
- #     coefficient unit for Radarsat1 and ALOS                  *
+ #     coefficient unit for Radarsat1, ASNARO-2 and ALOS series *
  ****************************************************************/
 void readleader(
         input_readfiles &readfiles_arg,
@@ -777,6 +854,8 @@ void readleader(
                         c16ltposerr[17],
                         c16ctposerr[17],
                         c16rposerr[17],
+                        c16dcfconst[17],
+                        c16dcflinear[17],
                         c22dummy[23],
                         c22seconds[23],
                         c22interval[23],
@@ -795,11 +874,15 @@ void readleader(
                         c32weightazi[33],
                         c32refellips[33],
                         c64rcs[65];
+ bool                   isalosscan = false; // detect alos ScanSAR mode
+ real8                  prfdat;                   // prf in datfile
 
   // --- Check for RSAT #%// Bert Kampes, 02-Aug-2004 ---
   uint rec_seq;// type B4
   unsigned char rec_sub1, rec_type, rec_sub2, rec_sub3;// type B1
-
+  // Parameters for ALOS series
+  int16         ScanNr = 1;                // Scan Number
+  int16         Nburst = 0;                // Nburst
 
 
 // ======Open files======
@@ -879,6 +962,13 @@ void readleader(
       }
     }
   // start_added_by_don
+  else if (readfiles_arg.sar_processor==SARPR_JAX && (readfiles_arg.sensor_id == SLC_ALOS4))
+    {
+    if (lenrec2 != 4680)
+      {
+      WARNING.print("SARPR_JAX (ALOS4) has 4680 record length, but other value found?");
+      }
+    }
   else if (readfiles_arg.sar_processor==SARPR_JAX)
     {
     if (lenrec2 != 4096)
@@ -901,18 +991,19 @@ void readleader(
 
 
   // ______Scene parameters______
- // Modified by LG for reading ALOS Fine
- if (readfiles_arg.sensor_id == SLC_ALOS)
- {
-         leaderfile.seekg(startrec2+20,ios::beg);
-         leaderfile.read((char*)&c32sceneref,sizea32);
-         leaderfile.seekg(startrec2+20+sizea32+1,ios::beg);
- }
- else
- {
-         leaderfile.seekg(startrec2+36,ios::beg);
-         leaderfile.read((char*)&c32sceneref,sizea32);          // scene ref. number
- }
+  // Modified by LG for reading ALOS Fine
+  // Modified by RN for ALOS-2
+  if ((readfiles_arg.sensor_id == SLC_ALOS)||(readfiles_arg.sensor_id == SLC_ALOS2) || (readfiles_arg.sensor_id == SLC_ALOS4)||(readfiles_arg.sensor_id == SLC_ASNARO2) ||(readfiles_arg.sensor_id == SLC_Strix)) 
+  {
+    leaderfile.seekg(startrec2+20,ios::beg);
+    leaderfile.read((char*)&c32sceneref,sizea32);
+    leaderfile.seekg(startrec2+68,ios::beg);
+  }
+  else
+  {
+    leaderfile.seekg(startrec2+36,ios::beg);
+    leaderfile.read((char*)&c32sceneref,sizea32);          // scene ref. number
+  }
   c32sceneref[32]='\0';
   leaderfile.read((char*)&c32scenetime,sizea32);        // scene center time
   c32scenetime[32]='\0';
@@ -942,7 +1033,7 @@ void readleader(
   leaderfile.read((char*)&c16dummy,sizef16);            // dummy
   leaderfile.read((char*)&c8dummy,sizei8);              // center line#
   c8dummy[8]='\0';
-  uint scenecenterline = atoi(c8dummy);
+  uint64 scenecenterline = atoi(c8dummy);
   leaderfile.read((char*)&c8dummy,sizei8);              // center pixel#
   c8dummy[8]='\0';
   uint scenecenterpixel = atoi(c8dummy);
@@ -951,7 +1042,7 @@ void readleader(
   leaderfile.read((char*)&c16scenewidth,sizef16);       // scene width
   c16scenewidth[16]='\0';
 
-// ______General mission / sensor parameters______
+  // ______General mission / sensor parameters______
   leaderfile.seekg(startrec2+396,ios::beg);
   leaderfile.read((char*)&c16platformid,sizea16);       // platform mission id
   c16platformid[16]='\0';
@@ -1030,17 +1121,29 @@ void readleader(
   leaderfile.read((char*)&c4dummy,sizea4);              // reserved
   leaderfile.read((char*)&c16prf,sizef16);              // pulse repetition frequency
   c16prf[16]='\0';
-
-// ______Sensor specific parameters______
+  leaderfile.read((char*)&c8satclockstep,sizei8);       // sat clock step length
+  c8satclockstep[8]='\0';
+  /*
+  // ______Sensor specific parameters______
   leaderfile.seekg(startrec2+982,ios::beg);
   leaderfile.read((char*)&c16sattimecode,sizei16);      // sat time code
   c16sattimecode[16]='\0';
   leaderfile.read((char*)&c32sattime,sizea32);          // sat time
   c32sattime[32]='\0';
-  leaderfile.read((char*)&c8satclockstep,sizei8);       // sat clock step length
-  c8satclockstep[8]='\0';
-
-// ______General processing parameters______
+  
+  if ((readfiles_arg.sensor_id == SLC_ALOS)||(readfiles_arg.sensor_id == SLC_ALOS2) ||(readfiles_arg.sensor_id == SLC_ASNARO2) ||(readfiles_arg.sensor_id == SLC_Strix)) 
+  {
+    char c8satclockstep[17];
+    leaderfile.read((char*)&c8satclockstep,sizei16);       // sat clock step length
+    c8satclockstep[16]='\0';
+  }
+  else
+  {
+    leaderfile.read((char*)&c8satclockstep,sizei8);       // sat clock step length
+    c8satclockstep[8]='\0';
+  }
+  */
+  // ______General processing parameters______
   leaderfile.seekg(startrec2+1046,ios::beg);
   leaderfile.read((char*)&c16facilityid,sizea16);       // proc. facility id
   c16facilityid[16]='\0';
@@ -1050,7 +1153,7 @@ void readleader(
   c8versionid[8]='\0';
   leaderfile.read((char*)&c16dummy,sizef16);            // dummy
   leaderfile.read((char*)&c16dummy,sizef16);            // dummy
-  leaderfile.read((char*)&c32typespec,sizea32);         // produkt type spec.
+  leaderfile.read((char*)&c32typespec,sizea32);         // product type spec.
   c32typespec[32]='\0';
   leaderfile.read((char*)&c32algid,sizea32);            // proc. alg. id
   c32algid[32]='\0';
@@ -1084,6 +1187,44 @@ void readleader(
   c16atdoppclinear[16]='\0';
   leaderfile.read((char*)&c16atdoppcquadratic,sizef16); // along track centroid
   c16atdoppcquadratic[16]='\0';
+  if (readfiles_arg.sensor_id == SLC_ALOS4) // In case of ALOS-4, It contains for every possible ScanSAR beam
+  {
+    ifstream datfile;
+    openfstream(datfile,readfiles_arg.datfile);
+    bk_assert(datfile,readfiles_arg.datfile,__FILE__,__LINE__);
+    DEBUG.print("ALOS-4 has four centroid patterns considering ScanSAR.");
+    char          Tmp[5];
+    // int16         ScanNr = 1;                // Scan Number
+    // int16         Nburst = 0;                // Nburst
+    datfile.seekg(448, ios::beg);
+    datfile.read((char*)&Tmp,sizei4);
+    Tmp[5] = '\0';
+    if (Tmp != "    "){Nburst = atoi(Tmp);}
+    datfile.seekg(720 + 60, ios::beg);
+    datfile.read((char*)&Tmp,sizeb4);
+    Tmp[5] = '\0';
+    if (Tmp != "    "){ScanNr = atoi(Tmp);}
+    datfile.close();
+    for (register int16 j=0;j<3;j++)                  // read remaining 3 beams
+    {
+      if ((Nburst > 0) || (j + 2 != ScanNr))
+      {
+        leaderfile.read((char*)&c16dummy,sizef16);
+        leaderfile.read((char*)&c16dummy,sizef16);
+        leaderfile.read((char*)&c16dummy,sizef16);
+      }
+      else
+      {
+      leaderfile.read((char*)&c16atdoppcconst,sizef16);     // along track centroid
+      c16atdoppcconst[16]='\0';
+      leaderfile.read((char*)&c16atdoppclinear,sizef16);    // along track centroid
+      c16atdoppclinear[16]='\0';
+      leaderfile.read((char*)&c16atdoppcquadratic,sizef16); // along track centroid
+      c16atdoppcquadratic[16]='\0';
+      }
+    }
+  }
+
   leaderfile.read((char*)&c16dummy,sizef16);            // spare
   leaderfile.read((char*)&c16xtdoppcconst,sizef16);     // cross track centroid
   c16xtdoppcconst[16]='\0';
@@ -1091,16 +1232,72 @@ void readleader(
   c16xtdoppclinear[16]='\0';
   leaderfile.read((char*)&c16xtdoppcquadratic,sizef16); // cross track centroid
   c16xtdoppcquadratic[16]='\0';
+  if (readfiles_arg.sensor_id == SLC_ALOS4) // In case of ALOS-4, It contains for every possible ScanSAR beam
+  {
+    for (register int16 j=0;j<3;j++)                  // read remaining 3 beams
+    {
+      if ((Nburst > 0) || (j + 2 != ScanNr))
+      {
+        leaderfile.read((char*)&c16dummy,sizef16);
+        leaderfile.read((char*)&c16dummy,sizef16);
+        leaderfile.read((char*)&c16dummy,sizef16);
+      }
+      else
+      {
+        leaderfile.read((char*)&c16xtdoppcconst,sizef16);     // cross track centroid
+        c16xtdoppcconst[16]='\0';
+        leaderfile.read((char*)&c16xtdoppclinear,sizef16);    // cross track centroid
+        c16xtdoppclinear[16]='\0';
+        leaderfile.read((char*)&c16xtdoppcquadratic,sizef16); // cross track centroid
+        c16xtdoppcquadratic[16]='\0';
+      }
+    }
+  }
   leaderfile.read((char*)&c8timepix,sizea8);            // time direction
+  if ((readfiles_arg.sensor_id==SLC_ALOS)||(readfiles_arg.sensor_id==SLC_ALOS2)||(readfiles_arg.sensor_id==SLC_ALOS4)||(readfiles_arg.sensor_id==SLC_ASNARO2)||(readfiles_arg.sensor_id==SLC_Strix))
+    {
+	  strcpy(c8timepix,"INCREASE"); // ALOS series is always increase but blank[RN]
+    }
   c8timepix[8]='\0';
   leaderfile.read((char*)&c8timeline,sizea8);           // time direction
   c8timeline[8]='\0';
+  if (!strcmp(c8timeline,"ASCEND  ")) // ALOS and ALOS-2 writes ASCEND / DESCEND[RN]
+	  {
+	  DEBUG.print("ASCEND is detected, ALOS / ALOS-2 use this term.");
+	  strcpy(c8timeline,"INCREASE");
+	  }
+  if (!strcmp(c8timeline,"DESCEND "))
+  {
+	  DEBUG.print("DESCEND is detected, ALOS / ALOS-2 use this term.");
+	  strcpy(c8timeline,"DECREASE");
+  }
   leaderfile.read((char*)&c16atdopprconst,sizef16);     // along track rate
   c16atdopprconst[16]='\0';
   leaderfile.read((char*)&c16atdopprlinear,sizef16);    // along track rate
   c16atdopprlinear[16]='\0';
   leaderfile.read((char*)&c16atdopprquadratic,sizef16); // along track rate
   c16atdopprquadratic[16]='\0';
+  if (readfiles_arg.sensor_id == SLC_ALOS4) // In case of ALOS-4, It contains for every possible ScanSAR beam
+  {
+    for (register int16 j=0;j<3;j++)                  // read remaining 3 beams
+    {
+      if ((Nburst > 0) || (j + 2 != ScanNr))
+      {
+        leaderfile.read((char*)&c16dummy,sizef16);
+        leaderfile.read((char*)&c16dummy,sizef16);
+        leaderfile.read((char*)&c16dummy,sizef16);
+      }
+      else
+      {
+        leaderfile.read((char*)&c16atdopprconst,sizef16);     // along track rate
+        c16atdopprconst[16]='\0';
+        leaderfile.read((char*)&c16atdopprlinear,sizef16);    // along track rate
+        c16atdopprlinear[16]='\0';
+        leaderfile.read((char*)&c16atdopprquadratic,sizef16); // along track rate
+        c16atdopprquadratic[16]='\0';
+      }
+    }
+  }
   leaderfile.read((char*)&c16dummy,sizef16);            // spare
   leaderfile.read((char*)&c16xtdopprconst,sizef16);     // cross track rate
   c16xtdopprconst[16]='\0';
@@ -1108,6 +1305,27 @@ void readleader(
   c16xtdopprlinear[16]='\0';
   leaderfile.read((char*)&c16xtdopprquadratic,sizef16); // cross track rate
   c16xtdopprquadratic[16]='\0';
+  if (readfiles_arg.sensor_id == SLC_ALOS4) // In case of ALOS-4, It contains for every possible ScanSAR beam
+  {
+    for (register int16 j=0;j<3;j++)                  // read remaining 3 beams
+    {
+      if ((Nburst > 0) || (j + 2 != ScanNr))
+      {
+        leaderfile.read((char*)&c16dummy,sizef16);
+        leaderfile.read((char*)&c16dummy,sizef16);
+        leaderfile.read((char*)&c16dummy,sizef16);
+      }
+      else
+      {
+        leaderfile.read((char*)&c16xtdopprconst,sizef16);     // cross track rate
+        c16xtdopprconst[16]='\0';
+        leaderfile.read((char*)&c16xtdopprlinear,sizef16);    // cross track rate
+        c16xtdopprlinear[16]='\0';
+        leaderfile.read((char*)&c16xtdopprquadratic,sizef16); // cross track rate
+        c16xtdopprquadratic[16]='\0';
+      }
+    }
+  }
   leaderfile.read((char*)&c16dummy,sizef16);            // spare
   leaderfile.read((char*)&c8linecontent,sizea8);        // indicator
   c8linecontent[8]='\0';
@@ -1115,13 +1333,93 @@ void readleader(
   c4clutterlock[4]='\0';
   leaderfile.read((char*)&c4autofocus,sizea4);          // flag
   c4autofocus[4]='\0';
-  leaderfile.read((char*)&c16linespace,sizef16);        //
+  if (readfiles_arg.sensor_id == SLC_ALOS4) // In case of ALOS-4, There are other flags for antenna pattern, RFI and polarimetry
+  {
+    for (register int16 j=0;j<5;j++)                  // read and discard remaining 5 flags
+    {
+      leaderfile.read((char*)&c4dummy,sizea4);
+    }
+  }
+  leaderfile.read((char*)&c16linespace,sizef16);        // line spacing 
   c16linespace[16]='\0';
-  leaderfile.read((char*)&c16pixspace,sizef16);         //
+  leaderfile.read((char*)&c16pixspace,sizef16);         // pixel spacing
   c16pixspace[16]='\0';
   leaderfile.read((char*)&c16rcompdes,sizea16);         // range compression designator
   c16rcompdes[16]='\0';
+  leaderfile.read((char*)&c16dcfconst,sizef16);        // doppler center frequency constant 
+  c16dcfconst[16]='\0';
+  leaderfile.read((char*)&c16dcflinear,sizef16);        // doppler center frequency linear
+  c16dcflinear[16]='\0';
 
+
+
+  // scene center of ALOS and ALOS-2 is in datfile
+  if ((readfiles_arg.sensor_id == SLC_ALOS)||(readfiles_arg.sensor_id == SLC_ALOS2)||(readfiles_arg.sensor_id == SLC_ALOS4)||(readfiles_arg.sensor_id == SLC_ASNARO2)||(readfiles_arg.sensor_id == SLC_Strix)) 
+  {
+  // ______Open files______ 
+    ifstream datfile;
+    openfstream(datfile,readfiles_arg.datfile);
+    bk_assert(datfile,readfiles_arg.datfile,__FILE__,__LINE__);
+    DEBUG.print("ALOS and ALOS-2 have scene center information in dat file.");
+    
+    uint64                  lenrec1d;                // length of record1 (720 for alos series)
+    int32                  b4dummy;
+    datfile.seekg(8,ios::beg);
+    datfile.read((char*)&lenrec1d,sizeb4);
+    lenrec1d = ntohl(lenrec1d);
+    datfile.seekg(236,ios::beg);
+    datfile.read((char*)&c8dummy,sizei8);
+    uint64 lenline = atoi(c8dummy);                  // number of lines (For ALOS-2 ScanSAR mode)
+    uint64 ScanCentlin = 0;                          // temporal value
+    if (scenecenterline >= (lenline/2)){ScanCentlin =(scenecenterline - (lenline/2));}
+    else {ScanCentlin =((lenline/2) - scenecenterline );}
+    if ( ScanCentlin > 20)         // in case of ScanSAR, scenecenterline is same for F3 beam 
+    {
+    	  DEBUG << "ScanSAR mode IMG file has different line number from LED file " << lenline/2 << "; in LED " << scenecenterline;
+   	    DEBUG.print();
+    	  // prfdat = double(lenline/20)/double(scenecenterline/10);
+   	    datfile.seekg(lenrec1d+56,ios::beg);
+   	    uint prfofday1;
+   	    datfile.read((char*)&prfofday1,sizeb4);              // pulse repetition frequency
+   	    prfofday1 = ntohl(prfofday1);
+   	    prfdat = real8(prfofday1)/1e3;
+   	    datfile.read((char*)&b4dummy,sizeb4);              // pulse repetition frequency
+   	    b4dummy = ntohl(b4dummy);
+    	  DEBUG << "PRF in datfile" << prfdat << "Hz at first line in scan number "<< b4dummy;
+   	    DEBUG.print();
+    	scenecenterline = lenline/2;
+    	isalosscan = true;
+    }
+    if (readfiles_arg.sensor_id == SLC_Strix)         // in case of Strix series, PRF in LED is wrong 
+    {
+   	    datfile.seekg(lenrec1d+56,ios::beg);
+   	    uint prfofday1;
+   	    datfile.read((char*)&prfofday1,sizeb4);              // pulse repetition frequency
+   	    prfofday1 = ntohl(prfofday1);
+   	    prfdat = real8(prfofday1)/1e3;
+    	  INFO << "PRF in datfile for Strix series" << prfdat << "Hz at first line.";
+   	    INFO.print();
+    }
+    uint64                  lenrec2d;                // length of record2
+    datfile.seekg(lenrec1d+8,ios::beg);
+    datfile.read((char*)&lenrec2d,sizeb4);
+    lenrec2d = ntohl(lenrec2d);
+    uint64 startrecN = uint64(lenrec1d)+uint64((scenecenterline-1)*lenrec2d);// start of scene center
+    datfile.seekg(startrecN+196,ios::beg);
+    datfile.read((char*)&b4dummy,sizeb4);
+    b4dummy = ntohl(b4dummy);
+    sprintf(c16centerlat,"%.6f",double(b4dummy)/1e6);
+    datfile.seekg(startrecN+208,ios::beg);
+    datfile.read((char*)&b4dummy,sizeb4);
+    b4dummy = ntohl(b4dummy);
+    sprintf(c16centerlon,"%.6f",double(b4dummy)/1e6);
+    
+    INFO << "scene center latitude: " << c16centerlat <<", longitude: "<<c16centerlon <<", at " << scenecenterline <<"th line.";
+    INFO.print();
+    datfile.close();
+  }
+  // end of scene center of ALOS and ALOS-2
+  
 
 
   // --- RSAT does not fill this spare part of the record (blanks) ---
@@ -1147,267 +1445,278 @@ void readleader(
   matrix<real8> STATE_INERTIAL;// has to be declared at large scope, used later.
 
 
-//if (readfiles_arg.sar_processor!=SARPR_ATL)
-// seems ERS data are same, also with Atlantis, so only check for RSAT here.
-if (readfiles_arg.sensor_id!=SLC_RSAT)
+  //if (readfiles_arg.sar_processor!=SARPR_ATL)
+  // seems ERS data are same, also with Atlantis, so only check for RSAT here.
+  if (readfiles_arg.sensor_id!=SLC_RSAT)
   {
-  DEBUG.print("Reading rest of this record, which for RSAT is empty.");
+    DEBUG.print("Reading rest of this record, which for RSAT is empty.");
 
-  // ______Sensor specific local use segment______
-  leaderfile.seekg(startrec2+1766,ios::beg);
-  leaderfile.read((char*)&c16zd1strange,sizef16);       // zero doppler 1st pixel
-  c16zd1strange[16]='\0';
-  leaderfile.read((char*)&c16zdcenrange,sizef16);       // zero doppler centre pixel
-  c16zdcenrange[16]='\0';
-  leaderfile.read((char*)&c16zdlstrange,sizef16);       // zero doppler last pixel 2way
-  c16zdlstrange[16]='\0';
-  leaderfile.read((char*)&c24zd1stazitime,sizea24);     // zero doppler 1st pixel
-  c24zd1stazitime[24]='\0';
-  leaderfile.read((char*)&c24zdcenazitime,sizea24);     // zero doppler 1st pixel
-  c24zdcenazitime[24]='\0';
-  leaderfile.read((char*)&c24zdlstazitime,sizea24);     // zero doppler 1st pixel
-  c24zdlstazitime[24]='\0';
+    // ______Sensor specific local use segment______
+    if ((readfiles_arg.sensor_id != SLC_ALOS)&&(readfiles_arg.sensor_id != SLC_ALOS2)&&(readfiles_arg.sensor_id != SLC_ALOS4)&&(readfiles_arg.sensor_id != SLC_ASNARO2)&&(readfiles_arg.sensor_id != SLC_Strix)) 
+    {
+  	  // no zero doppler data in ALOS / ALOS-2 in this section [RN]
+      leaderfile.seekg(startrec2+1766,ios::beg);
+      leaderfile.read((char*)&c16zd1strange,sizef16);       // zero doppler 1st pixel
+      leaderfile.read((char*)&c16zdcenrange,sizef16);       // zero doppler centre pixel
+      leaderfile.read((char*)&c16zdlstrange,sizef16);       // zero doppler last pixel 2way
+      leaderfile.read((char*)&c24zd1stazitime,sizea24);     // zero doppler 1st pixel
+      leaderfile.read((char*)&c24zdcenazitime,sizea24);     // zero doppler 1st pixel
+      leaderfile.read((char*)&c24zdlstazitime,sizea24);     // zero doppler 1st pixel
+    }
+    c16zd1strange[16]='\0';
+    c16zdcenrange[16]='\0';
+    c16zdlstrange[16]='\0';
+    c24zd1stazitime[24]='\0';
+    c24zdcenazitime[24]='\0';
+    c24zdlstazitime[24]='\0';
 
 
-  // --- RECORD 3 ---
-  DEBUG.print("record 3 of leader file (ERS).");
-  uint startrec3 = lenrec1 + lenrec2;
-  leaderfile.seekg(startrec3,ios::beg);//     map projection data record
-  leaderfile.read((char*)&rec_seq,sizeb4);//  record number
-  rec_seq = ntohl(rec_seq);// Bert Kampes, 07-Apr-2005
-  leaderfile.read((char*)&rec_sub1,sizeb1);// first record sub type code
-  leaderfile.read((char*)&rec_type,sizeb1);// record type code
-  leaderfile.read((char*)&rec_sub2,sizeb1);// second record sub type code
-  leaderfile.read((char*)&rec_sub3,sizeb1);// third record sub type code
-  DEBUG.print("ERS:  Expecting record 3 with code {10,20,31,20}");
-  DEBUG.print("RSAT: Expecting record 3 with code {18,60,18,20}");
-  DEBUG.print("RSAT record length is 4096, ERS 1886, but");
-  DEBUG.print("ERS contains more info on zero doppler times, etc.");
-  DEBUG.print("RSAT seems to have that in data file");
-  DEBUG << "rec_seq: " << rec_seq
+    // --- RECORD 3 ---
+    DEBUG.print("record 3 of leader file (ERS).");
+    uint startrec3 = lenrec1 + lenrec2;
+    leaderfile.seekg(startrec3,ios::beg);//     map projection data record
+    leaderfile.read((char*)&rec_seq,sizeb4);//  record number
+    rec_seq = ntohl(rec_seq);// Bert Kampes, 07-Apr-2005
+    leaderfile.read((char*)&rec_sub1,sizeb1);// first record sub type code
+    leaderfile.read((char*)&rec_type,sizeb1);// record type code
+    leaderfile.read((char*)&rec_sub2,sizeb1);// second record sub type code
+    leaderfile.read((char*)&rec_sub3,sizeb1);// third record sub type code
+    DEBUG.print("ERS:  Expecting record 3 with code {10,20,31,20}");
+    DEBUG.print("RSAT: Expecting record 3 with code {18,60,18,20}");
+    DEBUG.print("RSAT record length is 4096, ERS 1886, but");
+    DEBUG.print("ERS contains more info on zero doppler times, etc.");
+    DEBUG.print("RSAT seems to have that in data file");
+    DEBUG << "rec_seq: " << rec_seq
         << "; rec_sub1: " << int(rec_sub1)
         << "; rec_type: " << int(rec_type)
         << "; rec_sub2: " << int(rec_sub2)
         << "; rec_sub3: " << int(rec_sub3);
-  DEBUG.print();
+    DEBUG.print();
 
-  // ___ Read important information ___
-  leaderfile.seekg(startrec3+8,ios::beg);               //  map projection data record
-  leaderfile.read((char*)&lenrec3,sizeb4);              // length of record3
-  lenrec3 = ntohl(lenrec3);     // bk 6 jul 2000, byteorder x86 machines.
-  DEBUG << "readleader::record 3: start at: " << startrec3 << "; length: " << lenrec3;
-  DEBUG.print();
+    // ___ Read important information ___
+    leaderfile.seekg(startrec3+8,ios::beg);               //  map projection data record
+    leaderfile.read((char*)&lenrec3,sizeb4);              // length of record3
+    lenrec3 = ntohl(lenrec3);     // bk 6 jul 2000, byteorder x86 machines.
+    DEBUG << "readleader::record 3: start at: " << startrec3 << "; length: " << lenrec3;
+    DEBUG.print();
 
-  //if (lenrec3 != 1620 ) // quarter scene 1046 (?)
-  if (lenrec3 < 1620 ) // quarter scene 1046 (?)
+    //if (lenrec3 != 1620 ) // quarter scene 1046 (?)
+    if (lenrec3 < 1620 ) // quarter scene 1046 (?)
     {
-    WARNING.print("Probably something wrong here, byte order on x86?");
-    WARNING.print("you may also be trying to read leader of ESA.RAW not ESA.SLC.");
-    WARNING.print("format (or quarter scene).");
-    WARNING.print("We try to do something useful still, but be careful.");
-    WARNING.print("Skipping map projection record, not in ESA.RAW leaderfile format.");
-    WARNING << "readleader: length of record 3 = \""
+      WARNING.print("Probably something wrong here, byte order on x86?");
+      WARNING.print("you may also be trying to read leader of ESA.RAW not ESA.SLC.");
+      WARNING.print("format (or quarter scene).");
+      WARNING.print("We try to do something useful still, but be careful.");
+      WARNING.print("Skipping map projection record, not in ESA.RAW leaderfile format.");
+      WARNING << "readleader: length of record 3 = \""
          <<  lenrec3 << "\"; expected \"1620\" for ESA SLC (full scene).";
-    WARNING.print();
-    lenrec3 = 0;
-    skipmapprojrecord = true;
+      WARNING.print();
+      lenrec3 = 0;
+      skipmapprojrecord = true;
     }
-  // --- Trying to read anyway if it is longer ---
-  if (lenrec3 > 1620 ) // atlantis? rec2 is 4096 not 1886 (?)
+    // --- Trying to read anyway if it is longer ---
+    if ((readfiles_arg.sensor_id == SLC_ALOS)||(readfiles_arg.sensor_id == SLC_ALOS2)||(readfiles_arg.sensor_id == SLC_ALOS4)||(readfiles_arg.sensor_id == SLC_Strix)) 
     {
-    //skipmapprojrecord = true;// no: want to read it sometimes...
-    WARNING.print("record length longer than expected.  Atlantis?.  reading map.");
-    WARNING.print("seems not ok. assuming mapprojection record not present");
-    WARNING.print("trying to read further with next record");
-    startrec3 = lenrec1+lenrec2+lenrec3;// try to continue with rec4??? rec3 seems platform data
-    lenrec3 = 0;// so next time this record is read, but with platform data format...
+	    DEBUG << "No map projection in ALOS and ALOS-2 L1.1 data, StriX as well" ;
+	    DEBUG.print();
+	    lenrec3 = 0;
+	    skipmapprojrecord = true; // no map projection in ALOS / ALOS-2 L1.1 data[RN]
+    }
+    else if (lenrec3 > 1620 ) // atlantis? rec2 is 4096 not 1886 (?)
+    {
+      //skipmapprojrecord = true;// no: want to read it sometimes...
+      WARNING.print("record length longer than expected.  Atlantis?.  reading map.");
+      WARNING.print("seems not ok. assuming mapprojection record not present");
+      WARNING.print("trying to read further with next record");
+      startrec3 = lenrec1+lenrec2+lenrec3;// try to continue with rec4??? rec3 seems platform data
+      lenrec3 = 0;// so next time this record is read, but with platform data format...
     }
 
-  // skip map projection record if not present ...
-  // BK 18-Jul-2000
-  if (skipmapprojrecord) // not present, do not read.
+    // skip map projection record if not present ...
+    // BK 18-Jul-2000
+    if (skipmapprojrecord) // not present, do not read.
     {
-    WARNING.print("Skipping map projection record. Not found.");
-    WARNING.print("Continuing with platform position data.");
+      WARNING.print("Skipping map projection record. Not found.");
+      WARNING.print("Continuing with platform position data.");
     }
-  else // ESA.SLC format, do read map proj. record.
+    else // ESA.SLC format, do read map proj. record.
     {
-    // ______ Map projection general information ______
-    leaderfile.seekg(startrec3+28,ios::beg);
-    leaderfile.read((char*)&c32projection,sizea32);     // map proj. descr.
-    c32projection[32]='\0';
-    leaderfile.read((char*)&c16numpix,sizei16);         // numpixels
-    c16numpix[16]='\0';
-    leaderfile.read((char*)&c16numlin,sizei16);         // numlines
-    c16numlin[16]='\0';
+      // ______ Map projection general information ______
+      leaderfile.seekg(startrec3+28,ios::beg);
+      leaderfile.read((char*)&c32projection,sizea32);     // map proj. descr.
+      c32projection[32]='\0';
+      leaderfile.read((char*)&c16numpix,sizei16);         // numpixels
+      c16numpix[16]='\0';
+      leaderfile.read((char*)&c16numlin,sizei16);         // numlines
+      c16numlin[16]='\0';
 
+      // ______ Continue ______
+      leaderfile.read((char*)&c16interpix,sizef16);       // dist inter-pixel
+      c16interpix[16]='\0';
+      leaderfile.read((char*)&c16interlin,sizef16);       // dist inter-lines
+      c16interlin[16]='\0';
+      leaderfile.read((char*)&c16orien,sizef16);          // orientation at output
+      c16orien[16]='\0';
+      leaderfile.read((char*)&c16platincl,sizef16);       // actual platform inclination
+      c16platincl[16]='\0';
+      leaderfile.read((char*)&c16platascn,sizef16);       // actual ascending node
+      c16platascn[16]='\0';
+      leaderfile.read((char*)&c16geocenter,sizef16);      //
+      c16geocenter[16]='\0';
+      leaderfile.read((char*)&c16platalt,sizef16);        // altitude
+      c16platalt[16]='\0';
+      leaderfile.read((char*)&c16platgs,sizef16);         // ground speed
+      c16platgs[16]='\0';
+      leaderfile.read((char*)&c16plathead,sizef16);       // heading
+      c16plathead[16]='\0';
+      leaderfile.read((char*)&c32refellips,sizea32);      // ellipsoid
+      c32refellips[32]='\0';
+      leaderfile.read((char*)&c16refmajor,sizef16);       // semi major
+      c16refmajor[16]='\0';
+      leaderfile.read((char*)&c16refminor,sizef16);       // semi minor
+      c16refminor[16]='\0';
 
-    // ______ Continue ______
-    leaderfile.read((char*)&c16interpix,sizef16);       // dist inter-pixel
-    c16interpix[16]='\0';
-    leaderfile.read((char*)&c16interlin,sizef16);       // dist inter-lines
-    c16interlin[16]='\0';
-    leaderfile.read((char*)&c16orien,sizef16);          // orientation at output
-    c16orien[16]='\0';
-    leaderfile.read((char*)&c16platincl,sizef16);       // actual platform inclination
-    c16platincl[16]='\0';
-    leaderfile.read((char*)&c16platascn,sizef16);       // actual ascending node
-    c16platascn[16]='\0';
-    leaderfile.read((char*)&c16geocenter,sizef16);      //
-    c16geocenter[16]='\0';
-    leaderfile.read((char*)&c16platalt,sizef16);        // altitude
-    c16platalt[16]='\0';
-    leaderfile.read((char*)&c16platgs,sizef16);         // ground speed
-    c16platgs[16]='\0';
-    leaderfile.read((char*)&c16plathead,sizef16);       // heading
-    c16plathead[16]='\0';
-    leaderfile.read((char*)&c32refellips,sizea32);      // ellipsoid
-    c32refellips[32]='\0';
-    leaderfile.read((char*)&c16refmajor,sizef16);       // semi major
-    c16refmajor[16]='\0';
-    leaderfile.read((char*)&c16refminor,sizef16);       // semi minor
-    c16refminor[16]='\0';
+      // ______ Coordinates of four corner points ______
+      leaderfile.seekg(startrec3+1072,ios::beg);
+      leaderfile.read((char*)&c16lat11,sizef16);          // lat. 1st line 1st pix.
+      c16lat11[16]='\0';
+      leaderfile.read((char*)&c16lon11,sizef16);          // lon. 1st line 1st pix.
+      c16lon11[16]='\0';
+      leaderfile.read((char*)&c16lat1N,sizef16);          // lat. 1st line last pix.
+      c16lat1N[16]='\0';
+      leaderfile.read((char*)&c16lon1N,sizef16);          // lon. 1st line last pix.
+      c16lon1N[16]='\0';
+      leaderfile.read((char*)&c16latNN,sizef16);          // lat. last line last pix.
+      c16latNN[16]='\0';
+      leaderfile.read((char*)&c16lonNN,sizef16);          // lon. last line last pix.
+      c16lonNN[16]='\0';
+      leaderfile.read((char*)&c16latN1,sizef16);          // lat. last line 1st pix.
+      c16latN1[16]='\0';
+      leaderfile.read((char*)&c16lonN1,sizef16);          // lon. last line 1st pix.
+      c16lonN1[16]='\0';
+    } // end map proj.
 
-    // ______ Coordinates of four corner points ______
-    leaderfile.seekg(startrec3+1072,ios::beg);
-    leaderfile.read((char*)&c16lat11,sizef16);          // lat. 1st line 1st pix.
-    c16lat11[16]='\0';
-    leaderfile.read((char*)&c16lon11,sizef16);          // lon. 1st line 1st pix.
-    c16lon11[16]='\0';
-    leaderfile.read((char*)&c16lat1N,sizef16);          // lat. 1st line last pix.
-    c16lat1N[16]='\0';
-    leaderfile.read((char*)&c16lon1N,sizef16);          // lon. 1st line last pix.
-    c16lon1N[16]='\0';
-    leaderfile.read((char*)&c16latNN,sizef16);          // lat. last line last pix.
-    c16latNN[16]='\0';
-    leaderfile.read((char*)&c16lonNN,sizef16);          // lon. last line last pix.
-    c16lonNN[16]='\0';
-    leaderfile.read((char*)&c16latN1,sizef16);          // lat. last line 1st pix.
-    c16latN1[16]='\0';
-    leaderfile.read((char*)&c16lonN1,sizef16);          // lon. last line 1st pix.
-    c16lonN1[16]='\0';
-  } // end skip map proj.
-
-
-  // --- RECORD 4 ---
-  DEBUG.print("record 4 of leader file.");
-  uint startrec4=lenrec1+lenrec2+lenrec3;
-  leaderfile.seekg(startrec4+8,ios::beg);               //  slc platform position data record
-  leaderfile.read((char*)&lenrec4,sizeb4);              // length of record4
-  lenrec4 = ntohl(lenrec4);     // bk 6 jul 2000, byteorder x86 machines.
-  DEBUG << "readleader::record 4: start at: " << startrec4
+    // --- RECORD 4 ---
+    DEBUG.print("record 4 of leader file.");
+    uint startrec4=lenrec1+lenrec2+lenrec3;
+    leaderfile.seekg(startrec4+8,ios::beg);               //  slc platform position data record
+    leaderfile.read((char*)&lenrec4,sizeb4);              // length of record4
+    lenrec4 = ntohl(lenrec4);     // bk 6 jul 2000, byteorder x86 machines.
+    DEBUG << "readleader::record 4: start at: " << startrec4
         << "; length (variable): " << lenrec4;
-  DEBUG.print();
+    DEBUG.print();
 
 
-// ______ Positional data points ______
-  leaderfile.seekg(startrec4+140,ios::beg);
-  leaderfile.read((char*)&c4dummy,sizei4);              // number of data points
-  c4dummy[4]='\0';
-  numdatapoints = atoi(c4dummy);
-  leaderfile.read((char*)&c4year,sizei4);               // year
-  c4year[4]='\0';
-  leaderfile.read((char*)&c4month,sizei4);              // month
-  c4month[4]='\0';
-  leaderfile.read((char*)&c4day,sizei4);                // day
-  c4day[4]='\0';
-  leaderfile.read((char*)&c4dayofyear,sizei4);          // day of year
-  c4dayofyear[4]='\0';
-  leaderfile.read((char*)&c22seconds,sized22);          // sec
-  c22seconds[22]='\0';
-  leaderfile.read((char*)&c22interval,sized22);         // interval time
-  c22interval[22]='\0';
-  leaderfile.read((char*)&c64rcs,sizea64);              // ref. coord. system
-  c64rcs[64]='\0';
-  leaderfile.read((char*)&c22gmha,sized22);             // greenwich mean hour angle
-  c22gmha[22]='\0';
-  leaderfile.read((char*)&c16ltposerr,sizef16);         // along track pos. error
-  c16ltposerr[16]='\0';
-  leaderfile.read((char*)&c16ctposerr,sizef16);         // across track pos. error
-  c16ctposerr[16]='\0';
-  leaderfile.read((char*)&c16rposerr,sizef16);          // radial pos. error
-  c16rposerr[16]='\0';
+    // ______ Positional data points ______
+    leaderfile.seekg(startrec4+140,ios::beg);
+    leaderfile.read((char*)&c4dummy,sizei4);              // number of data points
+    c4dummy[4]='\0';
+    numdatapoints = atoi(c4dummy);
+    leaderfile.read((char*)&c4year,sizei4);               // year
+    c4year[4]='\0';
+    leaderfile.read((char*)&c4month,sizei4);              // month
+    c4month[4]='\0';
+    leaderfile.read((char*)&c4day,sizei4);                // day
+    c4day[4]='\0';
+    leaderfile.read((char*)&c4dayofyear,sizei4);          // day of year
+    c4dayofyear[4]='\0';
+    leaderfile.read((char*)&c22seconds,sized22);          // sec
+    c22seconds[22]='\0';
+    leaderfile.read((char*)&c22interval,sized22);         // interval time
+    c22interval[22]='\0';
+    leaderfile.read((char*)&c64rcs,sizea64);              // ref. coord. system
+    c64rcs[64]='\0';
+    leaderfile.read((char*)&c22gmha,sized22);             // greenwich mean hour angle
+    c22gmha[22]='\0';
+    leaderfile.read((char*)&c16ltposerr,sizef16);         // along track pos. error
+    c16ltposerr[16]='\0';
+    leaderfile.read((char*)&c16ctposerr,sizef16);         // across track pos. error
+    c16ctposerr[16]='\0';
+    leaderfile.read((char*)&c16rposerr,sizef16);          // radial pos. error
+    c16rposerr[16]='\0';
 
-// ______ Read statevector of data points ______
-  if (numdatapoints==0) // test, sometimes on linux problems
+    // ______ Read statevector of data points ______
+    if (numdatapoints==0) // test, sometimes on linux problems
     {
-    WARNING.print("numdatapoints=0: probalbly something wrong with filepointer");
-    WARNING.print("But continuing, be very careful!");
-    numdatapoints=1;                                    // arbitrary...
-    STATE.resize(6,numdatapoints);                      // storage statevector
+      WARNING.print("numdatapoints=0: probalbly something wrong with filepointer");
+      WARNING.print("But continuing, be very careful!");
+      numdatapoints=1;                                    // arbitrary...
+      STATE.resize(6,numdatapoints);                      // storage statevector
     }
-  else
+    else
     {
-    STATE.resize(6,numdatapoints);                      // storage statevector
-    for (register int32 i=0;i<numdatapoints;i++)        // number of data points
+      STATE.resize(6,numdatapoints);                      // storage statevector
+      for (register int32 i=0;i<numdatapoints;i++)        // number of data points
       {
-      leaderfile.seekg(startrec4+386+i*132,ios::beg);   // start ith datarecord
-      for (register int32 j=0;j<6;j++)                  // read x,y,z,xdot,ydot,zdot
+        leaderfile.seekg(startrec4+386+i*132,ios::beg);   // start ith datarecord
+        for (register int32 j=0;j<6;j++)                  // read x,y,z,xdot,ydot,zdot
         {
-        leaderfile.read((char*)&c22dummy,sized22);
-        c22dummy[22]='\0';
-        STATE(j,i)=atof(c22dummy);
+          leaderfile.read((char*)&c22dummy,sized22);
+          c22dummy[22]='\0';
+          STATE(j,i)=atof(c22dummy);
         }
       }
     }
 
-  // --- RECORD 5 (Bianca Cassee) slc facility related data record [general type]) ---
-  DEBUG.print("record 5 of leader file.");              //bc 18 dec 2003
-  uint startrec5=lenrec1+lenrec2+lenrec3+lenrec4;       //bc
-  leaderfile.seekg(startrec5+8,ios::beg);       //slc facility related
-  leaderfile.read((char*)&lenrec5,sizeb4);      //bc length of record4
-  lenrec5 = ntohl(lenrec5);                     //byteorder x86 machines.
-  DEBUG << "readleader::record 5: start at: " << startrec5
+    // --- RECORD 5 (Bianca Cassee) slc facility related data record [general type]) ---
+    DEBUG.print("record 5 of leader file.");              //bc 18 dec 2003
+    uint startrec5=lenrec1+lenrec2+lenrec3+lenrec4;       //bc
+    leaderfile.seekg(startrec5+8,ios::beg);       //slc facility related
+    leaderfile.read((char*)&lenrec5,sizeb4);      //bc length of record4
+    lenrec5 = ntohl(lenrec5);                     //byteorder x86 machines.
+    DEBUG << "readleader::record 5: start at: " << startrec5
         << "; length: " << lenrec5;
-  DEBUG.print();
+    DEBUG.print();
 
-
-  // ______ Calibration information  ______              //bc
-  leaderfile.seekg(startrec5+582,ios::beg);             //bc
-  leaderfile.read((char*)&c16incangle1strange,sizef16); //bc
-  c16incangle1strange[16]='\0';                         //bc
-  leaderfile.read((char*)&c16incanglecenrange,sizef16); //bc
-  c16incanglecenrange[16]='\0';                         // gk bc
-  leaderfile.read((char*)&c16incanglelstrange,sizef16); //bc
-  c16incanglelstrange[16]='\0';                         //bc
-  leaderfile.seekg(startrec5+662,ios::beg);             //gk
-  leaderfile.read((char*)&calK,sizef16);                //gk
-  calK[16]='\0';                                        //gk
-  leaderfile.seekg(startrec5+566,ios::beg);             //gk
-  leaderfile.read((char*)&repplspwr,sizef16);           //gk
-  repplspwr[16]='\0';                                   //gk
-  // ___ BK: number of invalid samples at end (DPAF/UKPAF problem) ___
-  char  c4SWSTflag[5];                                  //bk
-  char  c4SWSTchange[5];                                //bk
-  char  c4missingrawlines[5];                           //bk
-  char  c4validperline[5];                              //bk
-  leaderfile.seekg(startrec5+98,ios::beg);
-  leaderfile.read((char*)&c4SWSTflag,sizei4);           // numsamples
-  c4SWSTflag[4]='\0';
-  if (atoi(c4SWSTflag) != 0)
-    WARNING.print("SWST was not constant");
-  leaderfile.seekg(startrec5+138,ios::beg);
-  leaderfile.read((char*)&c4SWSTchange,sizei4);         // numsamples
-  c4SWSTchange[4]='\0';
-  if (atoi(c4SWSTchange) != 0)
+    if ((readfiles_arg.sensor_id != SLC_ALOS)&&(readfiles_arg.sensor_id != SLC_ALOS2)&&(readfiles_arg.sensor_id != SLC_ALOS4)&&(readfiles_arg.sensor_id != SLC_ASNARO2)&&(readfiles_arg.sensor_id != SLC_Strix)) 
     {
-    WARNING << "c4SWSTchange: " << c4SWSTchange;
-    WARNING.print();
+	    // no incidence angle data in ALOS series [RN]
+      // ______ Calibration information  ______              //bc
+      leaderfile.seekg(startrec5+582,ios::beg);             //bc
+      leaderfile.read((char*)&c16incangle1strange,sizef16); //bc
+      c16incangle1strange[16]='\0';                         //bc
+      leaderfile.read((char*)&c16incanglecenrange,sizef16); //bc
+      c16incanglecenrange[16]='\0';                         // gk bc
+      leaderfile.read((char*)&c16incanglelstrange,sizef16); //bc
+      c16incanglelstrange[16]='\0';                         //bc
+      leaderfile.seekg(startrec5+662,ios::beg);             //gk
+      leaderfile.read((char*)&calK,sizef16);                //gk
+      calK[16]='\0';                                        //gk
+      leaderfile.seekg(startrec5+566,ios::beg);             //gk
+      leaderfile.read((char*)&repplspwr,sizef16);           //gk
+      repplspwr[16]='\0';                                   //gk
+      // ___ BK: number of invalid samples at end (DPAF/UKPAF problem) ___
+      char  c4SWSTflag[5];                                  //bk
+      char  c4SWSTchange[5];                                //bk
+      char  c4missingrawlines[5];                           //bk
+      char  c4validperline[5];                              //bk
+      leaderfile.seekg(startrec5+98,ios::beg);
+      leaderfile.read((char*)&c4SWSTflag,sizei4);           // numsamples
+      c4SWSTflag[4]='\0';
+      if (atoi(c4SWSTflag) != 0)
+      {WARNING.print("SWST was not constant");}
+      leaderfile.seekg(startrec5+138,ios::beg);
+      leaderfile.read((char*)&c4SWSTchange,sizei4);         // numsamples
+      c4SWSTchange[4]='\0';
+      if (atoi(c4SWSTchange) != 0)
+      {
+        WARNING << "c4SWSTchange: " << c4SWSTchange;
+        WARNING.print();
+      }
+      leaderfile.seekg(startrec5+142,ios::beg);
+      leaderfile.read((char*)&c4missingrawlines,sizei4);            // numsamples
+      c4missingrawlines[4]='\0';
+      if (atoi(c4missingrawlines) != 0)
+      {
+        WARNING << "c4missingrawlines: " << c4missingrawlines;
+        WARNING.print();
+      }
+      leaderfile.seekg(startrec5+1722,ios::beg);
+      leaderfile.read((char*)&c4validperline,sizei4);               // numsamples
+      c4validperline[4]='\0';
+      DEBUG << "c4validperline: " << c4validperline;
+      DEBUG.print();
     }
-  leaderfile.seekg(startrec5+142,ios::beg);
-  leaderfile.read((char*)&c4missingrawlines,sizei4);            // numsamples
-  c4missingrawlines[4]='\0';
-  if (atoi(c4missingrawlines) != 0)
-    {
-    WARNING << "c4missingrawlines: " << c4missingrawlines;
-    WARNING.print();
-    }
-  leaderfile.seekg(startrec5+1722,ios::beg);
-  leaderfile.read((char*)&c4validperline,sizei4);               // numsamples
-  c4validperline[4]='\0';
-  DEBUG << "c4validperline: " << c4validperline;
-  DEBUG.print();
-
   /*
   leaderfile.seekg(startrec5+XXX,ios::beg);
   leaderfile.read((char*)&c4numvalid,sizei4);           // numsamples
@@ -1433,7 +1742,7 @@ if (readfiles_arg.sensor_id!=SLC_RSAT)
   //  DEBUG.print();
 
   }// endif ERS/RSAT
-else//RSAT method specified
+  else//RSAT method specified
   {
   skipmapprojrecord = true;// RSAT does not have this here
   // --- RECORD 3 (skip) ---
@@ -1602,7 +1911,7 @@ else//RSAT method specified
   char  c16lonofnode[17];
   char  c16meananomaly[17];
   // Modified by LG for reading JERS Fine
-  if ( readfiles_arg.sensor_id == SLC_ALOS )
+  if (( readfiles_arg.sensor_id == SLC_ALOS ) || ( readfiles_arg.sensor_id == SLC_ALOS2 ))
                 startrec7 =     startrec3;
   leaderfile.seekg(startrec7+44,ios::beg);
   leaderfile.read((char*)&c16semimajor,sizef16);
@@ -1739,14 +2048,12 @@ else//RSAT method specified
   // --- Limit the data points to 2 points before/after: 32 minutes ---
   // --- better yet, interpolate using keppler to 5 points 5 seconds dt over take ---
 }
-
-  leaderfile.close();
-
-
+leaderfile.close();
+// End of LEADER file extraction
 
 // ====== Compute prf and rsr and use these (based on data is better) ======
   // Modified by LG for reading ALOS Fine
-  if ( (readfiles_arg.sar_processor==SARPR_ATL) || (readfiles_arg.sar_processor == SARPR_JAX ) )
+  if ( (readfiles_arg.sar_processor==SARPR_ATL) || (readfiles_arg.sar_processor == SARPR_JAX) )
     skipmapprojrecord = true;
   real8 prfcomputed;            // [Hz]  written to result file
   real8 rsrcomputed;            // [MHz] written to result file
@@ -1781,8 +2088,32 @@ else//RSAT method specified
     WARNING.print(" + because map projection record not present(?).");
     prfcomputed = atof(c16prf);                 // Hz
     // start_added_by_don
-    if (readfiles_arg.sensor_id==SLC_ALOS)
-      prfcomputed /= 1e3;
+    if ((readfiles_arg.sensor_id==SLC_ALOS)||(readfiles_arg.sensor_id==SLC_ALOS2)||(readfiles_arg.sensor_id==SLC_ALOS4)||(readfiles_arg.sensor_id==SLC_ASNARO2)||(readfiles_arg.sensor_id==SLC_Strix)||(prfcomputed ==0.0))
+      {
+    	  prfcomputed /= 1e3;
+    	  DEBUG << "prf in LED file " << prfcomputed;
+    	  DEBUG.print();
+    	  if (isalosscan==true)
+    	    {
+    		  // prfcomputed *= prfdat;
+    		  prfcomputed = prfdat;
+        	DEBUG << "prf calculated from DAT file " << prfcomputed;
+      	  DEBUG.print();
+    	    }
+    	  //else
+    		//prfcomputed /= 1e3;
+        for(register int32 k=3;k<16;k++)
+          {
+        	if (c16prf[k]=='.')
+        	  {
+        		c16prf[k]=c16prf[k-1];
+        		c16prf[k-1]=c16prf[k-2];
+        		c16prf[k-2]=c16prf[k-3];
+        		c16prf[k-3]='.';
+        		break;
+        	  }
+          }
+      }
     // end_added_by_don
     rsrcomputed = atof(c16samplingrate);        // MHz
     }
@@ -1831,7 +2162,7 @@ else//RSAT method specified
     }
   real8 rangebandwidth = atof(c16bandrangetot);
   // start_added_by_don
-  if (readfiles_arg.sensor_id==SLC_ALOS)
+  if ((readfiles_arg.sensor_id==SLC_ALOS)||(readfiles_arg.sensor_id==SLC_ALOS2)||(readfiles_arg.sensor_id==SLC_ALOS4)||(readfiles_arg.sensor_id==SLC_ASNARO2)||(readfiles_arg.sensor_id==SLC_Strix))
     rangebandwidth /= 1e3;
   // end_added_by_don
   if (rangebandwidth < 1.0)// e.g. JERS not annotated.
@@ -1989,6 +2320,9 @@ else//RSAT method specified
     << "\n +relative to platform vertical axis: \t\t\t"
     <<  c16boresight
     << "\nPulse Repetition Frequency (PRF) (actual value): \t"
+    << setprecision(16)
+    <<  prfcomputed
+    << "\nPRF in LED file: \t"
     <<  c16prf
 
     << "\n\nSLC data set summary record: sensor specific parameters"
@@ -2203,6 +2537,8 @@ else//RSAT method specified
     <<  repplspwr//gk
     << "\nNumber of valid samples:   \t\t\t" << c4numvalid
     << "\nNumber of invalid samples: \t\t\t" << c4numinvalid
+    << "\nRange Doppler Center Frequency constant \t" << c16dcfconst
+    << "\nRange Doppler Center Frequency linear \t" << c16dcflinear
     <<  endl;
   int32 point;
 
@@ -2279,12 +2615,17 @@ if (readfiles_arg.sensor_id==SLC_RSAT && readfiles_arg.sar_processor==SARPR_ATL)
   scratchlogfile.close();
 
 
-
+  real8 azbandwidth;
   // ___ "repair" bandwidth if not given, e.g., in JERS? ___
   if (atof(c16bandazitot) < 1.0)
     {
     WARNING.print("could not find azimuth band width, using prf...");
-    strcpy(c16bandazitot,c16prf);
+    azbandwidth = prfcomputed;
+    //strcpy(c16bandazitot,c16prf);
+    }
+  else
+    {
+	  azbandwidth = atof(c16bandazitot);
     }
   if (atof(c16bandrangetot) < 1.0)
     {
@@ -2342,6 +2683,11 @@ if (readfiles_arg.sensor_id==SLC_RSAT && readfiles_arg.sar_processor==SARPR_ATL)
     WARNING.print("unexpected: time indicator along pixel direction not INCREASE nor DECREASE.");
     }
 
+  //__ For Strix, use PRF in datfile __
+  if (readfiles_arg.sensor_id == SLC_Strix)
+  {
+    prfcomputed = prfdat;
+  }
 
 
   ofstream scratchresfile("scratchreslea", ios::out | ios::trunc);
@@ -2378,7 +2724,7 @@ if (readfiles_arg.sensor_id==SLC_RSAT && readfiles_arg.sar_processor==SARPR_ATL)
     //<< c8platformheading;                               // heading
     //<< c16centerheading;                                 // MA for VMP true heading
   // start_added_by_don
-  if (readfiles_arg.sensor_id == SLC_ALOS)
+  if ((readfiles_arg.sar_processor==SARPR_JAX) )
     {
     scratchresfile
       << "\nRadar_wavelength (m):                      \t"
@@ -2397,7 +2743,7 @@ if (readfiles_arg.sensor_id==SLC_RSAT && readfiles_arg.sar_processor==SARPR_ATL)
     // ______ Azimuth ______
   //if (readfiles_arg.sar_processor==SARPR_ATL)
   // start_added_by_don
-  if ( (readfiles_arg.sensor_id == SLC_ALOS) || (readfiles_arg.sar_processor==SARPR_ATL))
+  if ( (readfiles_arg.sar_processor==SARPR_JAX) || (readfiles_arg.sar_processor==SARPR_ATL))
   // end_added_by_don
     {
     WARNING.print("First_pixel_azimuth_time not in leader, but done in readdat.");
@@ -2421,7 +2767,8 @@ if (readfiles_arg.sensor_id==SLC_RSAT && readfiles_arg.sar_processor==SARPR_ATL)
     << setprecision(16)
     <<  prfcomputed
     << "\nTotal_azimuth_band_width (Hz):             \t"
-    <<  c16bandazitot
+    <<  setprecision(16)
+    <<  azbandwidth
     << "\nWeighting_azimuth:                         \t"
     <<  c32weightazi
     << "\nXtrack_f_DC_constant (Hz, early edge):     \t"
@@ -2452,7 +2799,7 @@ if (readfiles_arg.sensor_id==SLC_RSAT && readfiles_arg.sar_processor==SARPR_ATL)
   // ______ Range ______
   //if (readfiles_arg.sar_processor==SARPR_ATL)
   // Modified by LG for reading ALOS Fine
-  if ( (readfiles_arg.sensor_id == SLC_ALOS) || (readfiles_arg.sar_processor==SARPR_ATL))
+  if ((readfiles_arg.sar_processor==SARPR_JAX) || (readfiles_arg.sar_processor==SARPR_ATL))
     {
     WARNING.print("Range_time_to_first_pixel not in leader, but done in readdat.");
     scratchresfile
@@ -2492,8 +2839,9 @@ if (readfiles_arg.sensor_id==SLC_RSAT && readfiles_arg.sar_processor==SARPR_ATL)
     <<  c32weightrange
     << endl;
 
-  scratchresfile.setf(ios::fixed | ios::floatfield);
-  scratchresfile
+  // scratchresfile.setf(ios::fixed | ios::floatfield);
+  scratchresfile.setf(ios::fixed);
+  scratchresfile 
     << "\n\n*******************************************************************"
     << "\n*_Start_leader_datapoints"
     << "\n*******************************************************************"
@@ -2582,7 +2930,12 @@ if (readfiles_arg.sensor_id==SLC_RSAT && readfiles_arg.sar_processor==SARPR_ATL)
   INFO << "Weighting function designator azimuth: "
        << c32weightazi;
   INFO.print();
-  toupper(c32weightazi);
+
+  string tmpstr=c32weightazi;
+  std::transform( tmpstr.begin(), tmpstr.end(), tmpstr.begin(), static_cast<int (*)(int)>(std::toupper));
+  std::cout << tmpstr << std::endl;
+  strcpy(c32weightazi, tmpstr.c_str());
+  //    toupper(c32weightazi);
   if (strncmp(c32weightazi,"HAMMING",7))
     {
     WARNING << INFO.get_str() << " not HAMMING.";
@@ -2591,7 +2944,11 @@ if (readfiles_arg.sensor_id==SLC_RSAT && readfiles_arg.sar_processor==SARPR_ATL)
   INFO << "Weighting function designator range:   "
        << c32weightrange;
   INFO.print();
-  toupper(c32weightrange);
+  tmpstr=c32weightrange;
+  std::transform( tmpstr.begin(), tmpstr.end(), tmpstr.begin(), static_cast<int (*)(int)>(std::toupper));
+  std::cout << tmpstr << std::endl;
+  strcpy(c32weightrange, tmpstr.c_str());
+  //    toupper(c32weightrange);
   if (strncmp(c32weightrange,"HAMMING",7))
     {
     WARNING << INFO.get_str() << " not HAMMING.";
@@ -2706,6 +3063,8 @@ void readdat(
   DEBUG.print();
   if (int(rec_sub1)==63 && int(rec_type)==192 && int(rec_sub2)==18 && int(rec_sub3)==18)
     DEBUG.print("This is the expected record with code {63,192,18,18}");
+  else if (int(rec_sub1)==50 && int(rec_type)==192 && int(rec_sub2)==18 && int(rec_sub3)==18)
+	  DEBUG.print("This is the expected ALOS series record with code {50,192,18,18}");
   else
     WARNING.print("This is NOT the expected record with code {63,192,18,18}");
   uint                  lenrec1;                // length of record1
@@ -2714,6 +3073,7 @@ void readdat(
   lenrec1 = ntohl(lenrec1);     // bk 6 jul 2000, byteorder x86 machines.
   DEBUG.print("ERS:  Expecting record 1 with length 10012");
   DEBUG.print("RSAT: Expecting record 1 with length 16252");
+  DEBUG.print("ALOS series: Expecting record 1 with length 720");
   DEBUG << "readdat::record 1: start at: " << 0
         << "; length: " << lenrec1;
   DEBUG.print();
@@ -2733,7 +3093,7 @@ void readdat(
   numchannels = atoi(c4);
   datfile.read((char*)&c8,sizei8);
   c8[8]='\0';
-  numlines = atoi(c8);
+  numlines = atoi(c8);                          // number of lines
 
   datfile.read((char*)&c4,sizei4);
     c4[4]='\0';
@@ -2819,6 +3179,8 @@ void readdat(
   DEBUG.print();
   if (int(rec_sub1)==50 && int(rec_type)==11 && int(rec_sub2)==18 && int(rec_sub3)==20)
     DEBUG.print("This is the expected record with code {50,11,18,20}");
+  else if (int(rec_sub1)==50 && int(rec_type)==10 && int(rec_sub2)==18 && int(rec_sub3)==20)
+	  DEBUG.print("This is the expected ALOS series record with code {50,10,18,20}");
   else
     WARNING.print("This is NOT the expected record with code {50,11,18,20}");
   uint                  lenrec2;                // length of record2
@@ -2829,21 +3191,31 @@ void readdat(
   DEBUG << "readdat::record 2: start at: " << startrec2
         << "; length: " << lenrec2;
   DEBUG.print();
-  uint startrec3 = lenrec1+lenrec2;
-  uint startrecN = lenrec1+(numlines-1)*lenrec2;// start of last record
+
+  int64 startrec3,startrecN;
+  uint zdmsecofday1,zdmsecofday2,zdmsecofdayN;
+  uint prfofday1, prfofdayN;
+  startrec3 = int64(lenrec1+lenrec2);
+  startrecN = int64(lenrec1)+int64((numlines-1))*int64(lenrec2);// start of last record
   // --- azimuth time to first line (depends on decrease/increase): ---
-  uint zdmsecofday1 = 99999;// B4
-  uint zdmsecofday2 = 99999;// B4
-  uint zdmsecofdayN = 99999;// B4
+  zdmsecofday1 = 99999;// B4 
+  zdmsecofday2 = 99999;// B4
+  zdmsecofdayN = 99999;// B4
   datfile.seekg(startrec2+44,ios::beg);//
   datfile.read((char*)&zdmsecofday1,sizeb4);//  range to first pix
   zdmsecofday1 = ntohl(zdmsecofday1);// Bert Kampes, 07-Apr-2005
+  datfile.seekg(startrec2+56,ios::beg);//
+  datfile.read((char*)&prfofday1,sizeb4);//  prf mHz
+  prfofday1 = ntohl(prfofday1);
   datfile.seekg(startrec3+44,ios::beg);//
   datfile.read((char*)&zdmsecofday2,sizeb4);//  range to first pix
   zdmsecofday2 = ntohl(zdmsecofday2);// Bert Kampes, 07-Apr-2005
   datfile.seekg(startrecN+44,ios::beg);//
   datfile.read((char*)&zdmsecofdayN,sizeb4);//  range to first pix
   zdmsecofdayN = ntohl(zdmsecofdayN);// Bert Kampes, 07-Apr-2005
+  datfile.seekg(startrecN+56,ios::beg);//
+  datfile.read((char*)&prfofdayN,sizeb4);//  prf mHz
+  prfofdayN = ntohl(prfofdayN);
   INFO << "zdmsecofday1: " << zdmsecofday1;
   INFO.print();
   DEBUG << "zdmsecofday2: " << zdmsecofday2;
@@ -2853,6 +3225,8 @@ void readdat(
   // --- Check PRF/RSR ---
   real8 prf_check = real8(numlines-1)/(abs(real8(zdmsecofday1)-real8(zdmsecofdayN))/1000.0);
   INFO << "PRF check (computed [Hz]): " << prf_check;
+  INFO.print();
+  INFO << "PRF in IMG file prfofday1: " << prfofday1 << ", prfofdayN: " << prfofdayN;
   INFO.print();
 
 
@@ -2882,11 +3256,34 @@ void readdat(
   // --- fill tm struct using daynumber with strptime, re-format it using strftime ---
   char datestring[13];// e.g., "25-Jan-1999"
   struct tm tm_tmp;
+  memset(&tm_tmp, 0, sizeof(struct tm));
   char buf[9]; // e.g., "1999 191";
-  sprintf(buf,"%4d %03d", acq_year,acq_day);
+  //snprintf(buf,sizeof(buf),"%4d %03d", acq_year,acq_day);
+  snprintf(buf,sizeof(buf),"%4u %03u", acq_year,acq_day);
   strptime(buf,"%Y %j",&tm_tmp);
-  int q = strftime(datestring,12,"%d-%b-%Y",&tm_tmp);// q: number of bytes written
-  INFO << "numbytes in datestring: (12?) " << q;
+  if ((tm_tmp.tm_yday != 0) && (tm_tmp.tm_mday == 0)) // Check and fix for C++11
+  {
+    static int monthDaysN[] = {31,28,31,30,31,30,31,31,30,31,30,31};
+    static int monthDaysL[] = {31,29,31,30,31,30,31,31,30,31,30,31};
+    int *monthDays = monthDaysN;
+    int base = 0;
+    int i;
+    if (((tm_tmp.tm_year + 1900) % 4) == 0) monthDays = monthDaysL;
+    if (((tm_tmp.tm_year + 1900) % 100) == 0) monthDays = monthDaysN;
+    if (((tm_tmp.tm_year + 1900) % 400) == 0) monthDays = monthDaysL;
+    // Leap years irrelevant for January dates.
+    if (tm_tmp.tm_yday < 31) monthDays = monthDaysN;
+    for (i = 0; i < 12; i++) {
+        if (tm_tmp.tm_yday - base < monthDays[i]) {
+            tm_tmp.tm_mday = tm_tmp.tm_yday - base + 1;
+            tm_tmp.tm_mon = i;
+            break;
+        }
+        base += monthDays[i];
+    }
+  }
+  int q = (strftime(datestring,sizeof(datestring),"%d-%b-%Y",&tm_tmp));// q: number of bytes written
+  INFO << "numbytes in datestring: (11?) " << q;
   INFO.print();
 
   // --- Fill important part: (sec of day) ---
@@ -2896,7 +3293,7 @@ void readdat(
   int32 sec  = int32((real8(zdmsecofday1)-hour*1000.0*60.0*60.0-min*1000.0*60.0)/1000.0);// floor
   int32 msec = int32((real8(zdmsecofday1)-hour*1000.0*60.0*60.0-min*1000.0*60.0-1000.0*sec));// floor
   //sprintf(c24zd1stazitime,"01-JAN-1990 %02d:%02d:%02d.%03d", hour,min,sec,msec);
-  sprintf(c24zd1stazitime,"%11s %02d:%02d:%02d.%03d", datestring, hour,min,sec,msec);
+  snprintf(c24zd1stazitime,sizeof(c24zd1stazitime),"%11s %02d:%02d:%02d.%03d", datestring, hour,min,sec,msec);
   INFO << "c24zd1stazitime: " << c24zd1stazitime;
   INFO.print();
 
@@ -2910,7 +3307,9 @@ void readdat(
     datfile.seekg(startrec2+116,ios::beg);//
     datfile.read((char*)&range1st,sizeb4);//  range to first pix
     range1st = ntohl(range1st);// Bert Kampes, 07-Apr-2005
-    zd1strange = 2000.0*range1st/SOL;
+    if (readfiles_arg.sensor_id==SLC_ASNARO2) zd1strange = 2.0*range1st/SOL;
+    else if (readfiles_arg.sensor_id==SLC_ALOS4) zd1strange = 20.0*range1st/SOL;
+    else zd1strange = 2000.0*range1st/SOL;
     INFO << "range1st: " << range1st;
     INFO.print();
      }
@@ -4458,6 +4857,7 @@ void radarsat_dump_data(
 
 
 //____RaffaeleNutricato START MODIFICATION SECTION 2
+//____RN modied Apr. 4, 2015 for different prf mode in PALSAR-2
 /****************************************************************
  *    OversampleSLC                                             *
  *                                                              *
@@ -4467,6 +4867,406 @@ void radarsat_dump_data(
  * Azimuth oversampling with factor 2 added.                    *
  *    Bert Kampes, 30-Jul-2005                                  *
  ***************************************************************/
+void  OversampleSLC(
+        const input_gen        &generalinput,
+        const slcimage         &imageinfo,
+        const input_oversample &oversampleinput,
+        const int16            fileid,
+        const real8            prfratio)
+  {
+  TRACE_FUNCTION("OversampleSLC (Raffaele Nutricato 12-Jan-2004)")
+  //char infile[EIGHTY];  // Input file which is master/slave.raw renamed as .old
+  //char outfile[EIGHTY]; // Output file which is the oversampled version.
+  char infile[2*ONE27];  // Input file which is master/slave.raw renamed as .old  // MA
+  char outfile[2*ONE27]; // Output file which is the oversampled version.
+  strcpy(infile,imageinfo.file);
+  strcpy(outfile,oversampleinput.fileoutovs);
+  const int32 OsrRange   = oversampleinput.OsrRange;   // Range oversampling ratio.
+  const int32 OsrAzimuth = oversampleinput.OsrAzimuth; // Azimuth oversampling ratio.
+  const int32 FilterSize = oversampleinput.FilterSize; // Length of the kernel for the oversampling in range. 
+//  if (OsrAzimuth!=1 && OsrAzimuth!=2)
+//      {
+//      ERROR.print("oversampling in azimuth: only factor 2");
+//      throw(some_error);
+//      }
+  // ______Open input file_____
+  ifstream ifile;
+  openfstream(ifile,infile);
+  bk_assert(ifile,infile,__FILE__,__LINE__);
+
+  // ______Open output file_____
+  ofstream ofile;
+  openfstream(ofile,outfile,generalinput.overwrit);
+  bk_assert(ofile,outfile,__FILE__,__LINE__);
+
+  // ______ Compute the size of original cropped image ______
+  //const int32 numlines  = imageinfo.currentwindow.lines();
+  //const int32 numpixels = imageinfo.currentwindow.pixels();
+  const uint numlines  = imageinfo.currentwindow.lines();  // MA
+  const uint numpixels = imageinfo.currentwindow.pixels();
+
+  // ______ Define the accuracy of the digital signal processings ______
+  // ______ in range (in azimuth I use float, BK ______
+  #define RN_DSP_ACCURACY    double
+  #define RN_DSP_CPXACCURACY complr8
+
+  // ______ Interpolation kernel section ______
+  matrix <RN_DSP_CPXACCURACY> LINE_IN(1,OsrRange*(numpixels-1)+1);// zero alternating
+  matrix <RN_DSP_CPXACCURACY> LINE_OUT(1,OsrRange*numpixels);// ovs line
+  const int32 interp_size         = FilterSize  * OsrRange - 1; 
+  matrix <RN_DSP_CPXACCURACY> INTERP_KERNEL(1,interp_size);     
+
+  // ______ Generate the range interpolator impulse response ______
+  const RN_DSP_ACCURACY invosr    = 1.0/RN_DSP_ACCURACY(OsrRange); 
+  RN_DSP_ACCURACY interpsamplepos = invosr - RN_DSP_ACCURACY(FilterSize)/2.0; 
+  for (int32 i=0; i<interp_size; i++) 
+    {
+    INTERP_KERNEL(0,i) = RN_DSP_CPXACCURACY(sinc(interpsamplepos),0); 
+    interpsamplepos   += invosr; 
+    }
+
+  // ______ Normalize kernel (BK) ______
+  // ______ (i would use 6pn real4 rc kernel, but ok.)
+  RN_DSP_ACCURACY qsum = 0.0;
+  for (int32 i=0; i<interp_size; ++i)
+    qsum += real(INTERP_KERNEL(0,i));
+  INTERP_KERNEL /= qsum;// complex divided by float
+
+  // ====== Variables for oversampling in azimuth [BK][RN] ======
+  // ______ We use a buffer of 7 lines (oversampled in range) ______
+  // ______ Increased from 6 for multiple points [RN] ______
+  // ______ these samples are interpolated in between using a ______
+  // ______ raised cosine kernel of 6 points (claimed 0.9999) ______
+  // ______ A big matrix is used that contains all shifted kernels ______
+  const int32 NP_kernel_az = 7; // prev.6
+  matrix<complr4> BUFFER_AZ(NP_kernel_az,LINE_OUT.pixels());// rotating buffer
+  matrix<complr4> KERNEL_AZ(NP_kernel_az,LINE_OUT.pixels());// raised cosine
+
+  // ====== Loop on the lines to oversample ======
+  // Set numlines to oversampled line: this is slow but enables various azimuth ovs [RN]
+  const int32 TEN        = 10;
+  const int32 postnumlines = int32(real8(numlines*OsrAzimuth)*prfratio); // numlines after oversampling
+  const int32 TENPERCENT = int32(floor((0.5*TEN+postnumlines)/TEN));  	// number of lines
+  const real4 CHI = imageinfo.prf/imageinfo.abw;						// oversampling factor az
+  int32 percentage       = 0;
+  int32 prevline = -1;													// previous line number
+  real8 osratio = real8(OsrAzimuth)*prfratio;                           // initialization
+  matrix<complr4> LINE_OUT2(1,LINE_OUT.pixels());						// interpolated in azi.
+  DEBUG << "original azimuth ovs ratio: " << OsrAzimuth;
+  DEBUG.print();
+  DEBUG << "prf ratio master/slave: " << prfratio;
+  DEBUG.print();
+  DEBUG << "final azimuth ovs ratio: " << osratio;
+  DEBUG.print();
+  DEBUG << "original line number: " << numlines;
+  DEBUG.print();
+  DEBUG << "final line number: " << postnumlines;
+  DEBUG.print();
+  for (register int32 linecnt=0; linecnt<postnumlines; linecnt++)
+    {
+    if (!(linecnt%TENPERCENT))
+      {
+      PROGRESS << "OVERSAMPLESLC: " << setw(3) << percentage << "%";
+      PROGRESS.print();
+      percentage += TEN;
+      }
+    if (prevline<int32(linecnt/osratio +0.5) || prevline<3)
+    {
+    	// _____ Range Resample first, renew the buffer if required [RN]_____
+    	for (int32 extraline=0; extraline<(int32(linecnt/osratio +0.5)-prevline); extraline++)
+    	{
+    	// ______ Read input data in larger line ______
+    	switch (imageinfo.formatflag)
+    	{
+    	case FORMATCR4:
+    	{
+    		matrix<real4> bufferrreal4(1,1);
+    		matrix<real4> bufferrimag4(1,1);
+    		for (int32 ii=0; ii<numpixels; ++ii)
+    		{
+    			ifile >> bufferrreal4;
+    			ifile >> bufferrimag4;
+    			// ______Generate a zero filled copy of LINE______
+    			// RN LINE_IN must be cleaned!!!
+    			LINE_IN(0,OsrRange*ii) = RN_DSP_CPXACCURACY(bufferrreal4(0,0),bufferrimag4(0,0));
+    		}
+    		break;
+    	}
+    	// ______ Convert first to ci2 before writing to file ______
+    	case FORMATCI2:
+    	{
+    		matrix<int16> bufferrealint16(1,1);
+    		matrix<int16> bufferimagint16(1,1);
+    		for (int32 ii=0; ii<numpixels; ++ii)
+    		{
+    			ifile >> bufferrealint16;
+    			ifile >> bufferimagint16;
+    			// ______Generate a zero filled copy of LINE______
+    			// RN LINE_IN must be cleaned!!!
+    			LINE_IN(0,OsrRange*ii) = RN_DSP_CPXACCURACY(bufferrealint16(0,0),bufferimagint16(0,0));
+    		}
+    		break;
+    	}
+    	default:
+    		PRINT_ERROR("Unknown input format for the cropped image.");
+    		throw(unhandled_case_error);
+    	}// end switch reading input line
+        // ______Spatial convolution between LINE_IN and INTERP_KERNEL______
+        int jmin, jmax, RN_k, minpos, maxpos;
+        RN_k   = 0;
+        minpos = (interp_size-1)/2;
+        maxpos = (interp_size-1)/2 + (LINE_IN.pixels() - 1) + OsrRange - 1;
+        for (int ii=minpos; ii<=maxpos; ii++)
+          {
+          LINE_OUT(0,RN_k) = 0; 
+          jmin = max(int32(0), int32(ii-interp_size+1));
+          jmax = min(int32(ii),int32(LINE_IN.pixels()-1));
+          for (int j=jmin; j<=jmax; j++)
+            LINE_OUT(0,RN_k) += LINE_IN(0,j) * INTERP_KERNEL(0,ii-j);
+          RN_k++;
+          }
+        
+        // ______ Rotating BUFFER_AZ ______
+        // ______ I dont trust shifting pointers so I copy lines ______
+        // ______ this is slower, but guarantees continuous in mem. ______
+        for (int32 x=0; x<LINE_OUT.pixels(); ++x)
+          for (int32 i=0; i<NP_kernel_az-1; ++i)
+            BUFFER_AZ(i,x) = BUFFER_AZ(i+1,x);					//rotate buffer by copy
+        for (int32 x=0; x<LINE_OUT.pixels(); ++x)
+          BUFFER_AZ(NP_kernel_az-1,x) = complr4(LINE_OUT(0,x));	// add new line
+    	}
+    	prevline=int32(linecnt/osratio +0.5);
+    }
+
+    // ______ Write LINE_OUT in the output file ______
+    switch (oversampleinput.oformatflag)
+      {
+      // ______ Convert first to cr4 before writing to file ______
+      case FORMATCR4:
+        {
+        complr4 buffercr4;
+        if ((OsrAzimuth!=1) || (prfratio >1.05) || (prfratio<0.95))
+          {
+        	
+          if (prevline>=NP_kernel_az/2)
+            {
+        		  // ______ Oversample in azimuth ______
+        		  // ______ e.g., kernel is 6 points, buffer is 6 lines ______
+        		  matrix<real4> x_axis(NP_kernel_az,1);
+        		  real4 dlincnt = real4(real4(linecnt)/real4(osratio) - floor(real4(linecnt)/real4(osratio)));
+        		  for (int32 i=0; i<NP_kernel_az; ++i)
+        			  x_axis(i,0) = -NP_kernel_az/2 + dlincnt + i;
+        		  matrix<complr4> tmp_kernel = mat2cr4(rc_kernel(x_axis, CHI, NP_kernel_az)); // rc_kernel:coregistration.cc
+        		  real4 qsum = 0.0;
+        		  for (int32 i=0; i<NP_kernel_az; ++i)
+        			  qsum += real(tmp_kernel(i,0));
+        		  tmp_kernel /= qsum;// complr4 normalize
+        		  // ___ Doppler centroid is function of range only ____
+        		  // ___ to shift spectrum of convolution kernel to fDC of data, multiply
+        		  // ___ in the space domain with a phase trend of -2pi*t*fdc/prf
+        		  // ___ (to shift back (no need) you would use +fdc), see manual;
+        		  for (int32 x=0; x<LINE_OUT.pixels(); ++x)
+        		  {
+        			  const real4 pix   = real4(imageinfo.currentwindow.pixlo)+real4(x)/2.0;
+        			  const real4 slope = 2.0*PI*imageinfo.pix2fdc(pix)/imageinfo.prf;
+        			  for (int32 i=0; i<NP_kernel_az; ++i)
+        			  {
+        				  // ___ Modify kernel, shift spectrum to fDC ___
+        				  const real4 t  = x_axis(i,0)*slope;// the phase ramp
+        				  KERNEL_AZ(i,x) = tmp_kernel(i,0)*complr4(cos(t),-sin(t));// note '-' (see manual)
+        			  }
+        			  
+        		  }
+        		  LINE_OUT2 = sum(dotmult(BUFFER_AZ,KERNEL_AZ),1);// dotmult:matrixbk.cc
+        		  // _____ write lines ______
+        		  for (int ii=0; ii<LINE_OUT.pixels(); ii++)
+        		  {
+                      buffercr4 = complr4(LINE_OUT2(0,ii));
+                      ofile.write((char*)&buffercr4,sizeof(complr4));
+        		  }
+        	  if (linecnt==postnumlines-1)//write extra lines at end
+        		  {
+        		  buffercr4 = complr4(0.0,0.0);
+        		  for (int i=0; i<NP_kernel_az/2; ++i)
+        			  for (int ii=0; ii<LINE_OUT.pixels(); ii++)
+        				  ofile.write((char*)&buffercr4,sizeof(complr4));
+        		  }
+            }
+          }
+        else // no azimuth oversampling
+          {
+          for (int ii=0; ii<LINE_OUT.pixels(); ii++)
+            {
+            buffercr4 = complr4(LINE_OUT(0,ii));
+            ofile.write((char*)&buffercr4,sizeof(complr4));
+            }
+          }
+        break;//switch
+        }
+      // ______ Convert first to ci2 before writing to file ______
+      case FORMATCI2:
+        {
+        compli16 bufferci16;
+        if ((OsrAzimuth!=1) || (prfratio >1.05) || (prfratio<0.95))
+          {
+        	
+          if (prevline>=NP_kernel_az/2)
+            {
+        		  // ______ Oversample in azimuth ______
+        		  // ______ e.g., kernel is 6 points, buffer is 6 lines ______
+        		  matrix<real4> x_axis(NP_kernel_az,1);
+        		  real4 dlincnt = real4(real4(linecnt)/real4(osratio) - floor(real4(linecnt)/real4(osratio)));
+        		  for (int32 i=0; i<NP_kernel_az; ++i)
+        			  x_axis(i,0) = -NP_kernel_az/2 + dlincnt + i;
+        		  matrix<complr4> tmp_kernel = mat2cr4(rc_kernel(x_axis, CHI, NP_kernel_az)); // rc_kernel:coregistration.cc
+        		  real4 qsum = 0.0;
+        		  for (int32 i=0; i<NP_kernel_az; ++i)
+        			  qsum += real(tmp_kernel(i,0));
+        		  tmp_kernel /= qsum;// complr4 normalize
+        		  // ___ Doppler centroid is function of range only ____
+        		  // ___ to shift spectrum of convolution kernel to fDC of data, multiply
+        		  // ___ in the space domain with a phase trend of -2pi*t*fdc/prf
+        		  // ___ (to shift back (no need) you would use +fdc), see manual;
+        		  for (int32 x=0; x<LINE_OUT.pixels(); ++x)
+        		  {
+        			  const real4 pix   = real4(imageinfo.currentwindow.pixlo)+real4(x)/2.0;
+        			  const real4 slope = 2.0*PI*imageinfo.pix2fdc(pix)/imageinfo.prf;
+        			  for (int32 i=0; i<NP_kernel_az; ++i)
+        			  {
+        				  // ___ Modify kernel, shift spectrum to fDC ___
+        				  const real4 t  = x_axis(i,0)*slope;// the phase ramp
+        				  KERNEL_AZ(i,x) = tmp_kernel(i,0)*complr4(cos(t),-sin(t));// note '-' (see manual)
+        			  }
+        			  
+        		  }
+        		  LINE_OUT2 = sum(dotmult(BUFFER_AZ,KERNEL_AZ),1);// dotmult:matrixbk.cc
+        		  // _____ write lines ______
+        		  for (int ii=0; ii<LINE_OUT.pixels(); ii++)
+        		  {
+        			  bufferci16 = cr4toci2(complr4(LINE_OUT2(0,ii)));
+                      ofile.write((char*)&bufferci16,sizeof(complr4));
+        		  }
+        	  if (linecnt==postnumlines-1)//write extra lines at end
+        		  {
+        		  bufferci16 = compli16(0,0);
+        		  for (int i=0; i<NP_kernel_az/2; ++i)
+        			  for (int ii=0; ii<LINE_OUT.pixels(); ii++)
+        				  ofile.write((char*)&bufferci16,sizeof(complr4));
+        		  }
+            }
+          }
+        else // no azimuth oversampling
+          {
+          for (int ii=0; ii<LINE_OUT.pixels(); ii++)
+            {
+            bufferci16 = cr4toci2(complr4(LINE_OUT(0,ii)));
+            ofile.write((char*)&bufferci16,sizeof(compli16));
+            }
+          }
+        break;
+        }
+        default:
+          PRINT_ERROR("Unknown output format for the oversampled image.");
+          throw(unhandled_case_error);
+      } // end switch writing output
+    LINE_IN.clean();
+    } // end for loop over lines
+
+
+  // ______ Close files ______
+  #undef RN_DSP_ACCURACY 
+  #undef RN_DSP_CPXACCURACY 
+  ifile.close();
+  ofile.close();
+
+  int32 totalline;
+  if (prfratio>1.015 && (real8(OsrAzimuth)*prfratio)>1.0)
+	  //totalline = int32(real8(imageinfo.currentwindow.linehi)*(real8(OsrAzimuth)*prfratio));
+	  totalline = int32(real8(imageinfo.currentwindow.linelo-1)*(real8(OsrAzimuth)*prfratio))+postnumlines;
+  else if (prfratio<0.985 && (real8(OsrAzimuth)*prfratio)<1.0)
+	  totalline = int32(real8(imageinfo.currentwindow.linelo-1)*(real8(OsrAzimuth)*prfratio))+postnumlines;
+  else
+	  totalline = imageinfo.currentwindow.linehi;
+    
+  // ====== Write results to scratchfile ======
+  ofstream scratchresfile("scratchoversample", ios::out | ios::trunc);
+  bk_assert(scratchresfile,"OversampleSLC: scratchoversample",__FILE__,__LINE__);
+  scratchresfile
+    << "\n\n*******************************************************************\n";
+  if (fileid == MASTERID)
+  {
+    scratchresfile <<  "*_Start_" << processcontrol[pr_m_oversample];
+    scratchresfile << "\t\t\t" <<  "master";
+  }
+  if (fileid == SLAVEID)
+    {
+    scratchresfile <<  "*_Start_" << processcontrol[pr_s_oversample];
+    scratchresfile << "\t\t\t" <<  "slave";
+    }
+  // ______ updateslcimage greps these ______
+  // ______ [BK] write new file size, etc. here ______
+  scratchresfile
+    << "\n*******************************************************************"
+    << "\nData_output_file: \t\t\t\t" 
+    <<  outfile
+    << "\nData_output_format: \t\t\t\t";
+    if (oversampleinput.oformatflag==FORMATCR4)
+      scratchresfile << "complex_real4";
+    if (oversampleinput.oformatflag==FORMATCI2)
+      scratchresfile << "complex_short";
+  scratchresfile 
+    << "\nFirst_line (w.r.t. ovs_image):       \t\t"
+    <<  int32(real8(imageinfo.currentwindow.linelo-1)*(real8(OsrAzimuth)*prfratio))+1
+    << "\nLast_line (w.r.t. ovs_image):        \t\t" 
+    <<  totalline
+    << "\nFirst_pixel (w.r.t. ovs_image):      \t\t" 
+    <<  (imageinfo.currentwindow.pixlo-1)*OsrRange+1
+    << "\nLast_pixel (w.r.t. ovs_image):       \t\t" 
+    <<  imageinfo.currentwindow.pixhi*OsrRange
+    << "\nMultilookfactor_azimuth_direction:   \t\t"
+    << 1.0/(real8(OsrAzimuth)*prfratio)
+    << "\nMultilookfactor_range_direction:     \t\t"
+    << 1.0/OsrRange
+  // ______ updateslcimage does not grep these ______
+    << "\nNumber of lines (oversampled):       \t\t"
+    << postnumlines
+    << "\nNumber of pixels (oversampled):      \t\t"
+    << OsrRange*numpixels
+    << "\n#First_line (w.r.t. original_image): \t\t"
+    <<  imageinfo.currentwindow.linelo
+    << "\n#Last_line (w.r.t. original_image):  \t\t" 
+    <<  imageinfo.currentwindow.linehi
+    << "\n#First_pixel (w.r.t. original_image):\t\t" 
+    <<  imageinfo.currentwindow.pixlo
+    << "\n#Last_pixel (w.r.t. original_image): \t\t" 
+    <<  imageinfo.currentwindow.pixhi;
+  scratchresfile 
+    << "\n*******************************************************************";
+  if (fileid == MASTERID)
+    scratchresfile <<  "\n* End_" << processcontrol[pr_m_oversample] << "_NORMAL";
+  if (fileid == SLAVEID)
+    scratchresfile <<  "\n* End_" << processcontrol[pr_s_oversample] << "_NORMAL";
+  scratchresfile
+    << "\n*******************************************************************"
+    <<  endl;
+  scratchresfile.close();
+
+  PROGRESS.print("OVERSAMPLESLC: 100%");
+  } // END OversampleSLC
+//____RaffaeleNutricato END MODIFICATION SECTION 2
+
+
+//____RaffaeleNutricato START MODIFICATION SECTION 2
+/****************************************************************
+ *    OversampleSLC                                             *
+ *                                                              *
+ * Oversamples the SLC by an integer factor.                    *
+ * For now only range oversampling is performed.                *
+ *    Raffaele Nutricato, 12-Jan-2004                           *
+ * Azimuth oversampling with factor 2 added.                    *
+ *    Bert Kampes, 30-Jul-2005                                  *
+ ***************************************************************/
+/*
 void  OversampleSLC(
         const input_gen        &generalinput,
         const slcimage         &imageinfo,
@@ -4482,7 +5282,7 @@ void  OversampleSLC(
   strcpy(outfile,oversampleinput.fileoutovs);
   const int32 OsrRange   = oversampleinput.OsrRange;   // Range oversampling ratio.
   const int32 OsrAzimuth = oversampleinput.OsrAzimuth; // Azimuth oversampling ratio.
-  const int32 FilterSize = oversampleinput.FilterSize; // Length of the kernel for the oversampling in range.
+  const int32 FilterSize = oversampleinput.FilterSize; // Length of the kernel for the oversampling in range. 
   if (OsrAzimuth!=1 && OsrAzimuth!=2)
     {
     ERROR.print("oversampling in azimuth: only factor 2");
@@ -4513,16 +5313,16 @@ void  OversampleSLC(
   // ______ Interpolation kernel section ______
   matrix <RN_DSP_CPXACCURACY> LINE_IN(1,OsrRange*(numpixels-1)+1);// zero alternating
   matrix <RN_DSP_CPXACCURACY> LINE_OUT(1,OsrRange*numpixels);// ovs line
-  const int32 interp_size         = FilterSize  * OsrRange - 1;
-  matrix <RN_DSP_CPXACCURACY> INTERP_KERNEL(1,interp_size);
+  const int32 interp_size         = FilterSize  * OsrRange - 1; 
+  matrix <RN_DSP_CPXACCURACY> INTERP_KERNEL(1,interp_size);     
 
   // ______ Generate the range interpolator impulse response ______
-  const RN_DSP_ACCURACY invosr    = 1.0/RN_DSP_ACCURACY(OsrRange);
-  RN_DSP_ACCURACY interpsamplepos = invosr - RN_DSP_ACCURACY(FilterSize)/2.0;
-  for (int32 i=0; i<interp_size; i++)
+  const RN_DSP_ACCURACY invosr    = 1.0/RN_DSP_ACCURACY(OsrRange); 
+  RN_DSP_ACCURACY interpsamplepos = invosr - RN_DSP_ACCURACY(FilterSize)/2.0; 
+  for (int32 i=0; i<interp_size; i++) 
     {
-    INTERP_KERNEL(0,i) = RN_DSP_CPXACCURACY(sinc(interpsamplepos),0);
-    interpsamplepos   += invosr;
+    INTERP_KERNEL(0,i) = RN_DSP_CPXACCURACY(sinc(interpsamplepos),0); 
+    interpsamplepos   += invosr; 
     }
 
   // ______ Normalize kernel (BK) ______
@@ -4549,7 +5349,7 @@ void  OversampleSLC(
     matrix<real4> x_axis(NP_kernel_az,1);
     for (int32 i=0; i<NP_kernel_az; ++i)
       x_axis(i,0) = -NP_kernel_az/2 + 0.5 + i;// [-2.5 -1.5 -0.5 0.5 1.5 2.5]
-    matrix<complr4> tmp_kernel = mat2cr4(rc_kernel(x_axis, CHI, NP_kernel_az));
+    matrix<complr4> tmp_kernel = mat2cr4(rc_kernel(x_axis, CHI, NP_kernel_az)); // rc_kernel:coregistration.cc
     DEBUG.print("Normalizing kernel");
     real4 qsum = 0.0;
     for (int32 i=0; i<NP_kernel_az; ++i)
@@ -4602,7 +5402,7 @@ void  OversampleSLC(
           LINE_IN(0,OsrRange*ii) = RN_DSP_CPXACCURACY(bufferrreal4(0,0),bufferrimag4(0,0));
           }
         break;
-        }
+        } 
       // ______ Convert first to ci2 before writing to file ______
       case FORMATCI2:
         {
@@ -4630,7 +5430,7 @@ void  OversampleSLC(
     maxpos = (interp_size-1)/2 + (LINE_IN.pixels() - 1) + OsrRange - 1;
     for (int ii=minpos; ii<=maxpos; ii++)
       {
-      LINE_OUT(0,RN_k) = 0;
+      LINE_OUT(0,RN_k) = 0; 
       jmin = max(int32(0), int32(ii-interp_size+1));
       jmax = min(int32(ii),int32(LINE_IN.pixels()-1));
       for (int j=jmin; j<=jmax; j++)
@@ -4665,7 +5465,7 @@ void  OversampleSLC(
       for (int32 x=0; x<LINE_OUT.pixels(); ++x)
         BUFFER_AZ(NP_kernel_az-1,x) = complr4(LINE_OUT(0,x));// add new line
       // ______ Oversample in azimuth (interpolate) ______
-      LINE_OUT2 = sum(dotmult(BUFFER_AZ,KERNEL_AZ),1);// at half+0.5
+      LINE_OUT2 = sum(dotmult(BUFFER_AZ,KERNEL_AZ),1);// at half+0.5 dotmult:matrixbk.cc
       }
 
     // ______ Write LINE_OUT in the output file ______
@@ -4721,13 +5521,13 @@ void  OversampleSLC(
             {
             // _____ write line 2.0 ______
             for (int ii=0; ii<LINE_OUT.pixels(); ii++)
-              {
+              {  
               bufferci16 = cr4toci2(complr4(BUFFER_AZ(NP_kernel_az/2-1,ii)));
               ofile.write((char*)&bufferci16,sizeof(compli16));
               }
             // _____ write line 2.5 ______
             for (int ii=0; ii<LINE_OUT.pixels(); ii++)
-              {
+              {  
               bufferci16 = cr4toci2(complr4(LINE_OUT2(0,ii)));
               ofile.write((char*)&bufferci16,sizeof(compli16));
               }
@@ -4760,8 +5560,8 @@ void  OversampleSLC(
 
 
   // ______ Close files ______
-  #undef RN_DSP_ACCURACY
-  #undef RN_DSP_CPXACCURACY
+  #undef RN_DSP_ACCURACY 
+  #undef RN_DSP_CPXACCURACY 
   ifile.close();
   ofile.close();
 
@@ -4785,21 +5585,21 @@ void  OversampleSLC(
   // ______ [BK] write new file size, etc. here ______
   scratchresfile
     << "\n*******************************************************************"
-    << "\nData_output_file: \t\t\t\t"
+    << "\nData_output_file: \t\t\t\t" 
     <<  outfile
     << "\nData_output_format: \t\t\t\t";
     if (oversampleinput.oformatflag==FORMATCR4)
       scratchresfile << "complex_real4";
     if (oversampleinput.oformatflag==FORMATCI2)
       scratchresfile << "complex_short";
-  scratchresfile
+  scratchresfile 
     << "\nFirst_line (w.r.t. ovs_image):       \t\t"
     <<  (imageinfo.currentwindow.linelo-1)*OsrAzimuth+1
-    << "\nLast_line (w.r.t. ovs_image):        \t\t"
+    << "\nLast_line (w.r.t. ovs_image):        \t\t" 
     <<  imageinfo.currentwindow.linehi*OsrAzimuth
-    << "\nFirst_pixel (w.r.t. ovs_image):      \t\t"
+    << "\nFirst_pixel (w.r.t. ovs_image):      \t\t" 
     <<  (imageinfo.currentwindow.pixlo-1)*OsrRange+1
-    << "\nLast_pixel (w.r.t. ovs_image):       \t\t"
+    << "\nLast_pixel (w.r.t. ovs_image):       \t\t" 
     <<  imageinfo.currentwindow.pixhi*OsrRange
     << "\nMultilookfactor_azimuth_direction:   \t\t"
     << 1.0/OsrAzimuth
@@ -4812,13 +5612,13 @@ void  OversampleSLC(
     << OsrRange*numpixels
     << "\n#First_line (w.r.t. original_image): \t\t"
     <<  imageinfo.currentwindow.linelo
-    << "\n#Last_line (w.r.t. original_image):  \t\t"
+    << "\n#Last_line (w.r.t. original_image):  \t\t" 
     <<  imageinfo.currentwindow.linehi
-    << "\n#First_pixel (w.r.t. original_image):\t\t"
+    << "\n#First_pixel (w.r.t. original_image):\t\t" 
     <<  imageinfo.currentwindow.pixlo
-    << "\n#Last_pixel (w.r.t. original_image): \t\t"
+    << "\n#Last_pixel (w.r.t. original_image): \t\t" 
     <<  imageinfo.currentwindow.pixhi;
-  scratchresfile
+  scratchresfile 
     << "\n*******************************************************************";
   if (fileid == MASTERID)
     scratchresfile <<  "\n* End_" << processcontrol[pr_m_oversample] << "_NORMAL";
@@ -4832,11 +5632,14 @@ void  OversampleSLC(
   PROGRESS.print("OVERSAMPLESLC: 100%");
   } // END OversampleSLC
 //____RaffaeleNutricato END MODIFICATION SECTION 2
+*/
 
+/*
 // Copy code from writeslc
 // do some modification
 // Modified by LG for reading ALOS Fine
 // To read complex real4 data
+*/
 void palsar_fine_dump_data(
         const input_gen &generalinput,
         const input_crop &crop_arg,
@@ -4926,7 +5729,13 @@ void palsar_fine_dump_data(
   DEBUG << "bottomborder: " << bottomborder;
   DEBUG.print();
 
-  datfile.seekg(280,ios::beg);                  // Record data
+  datfile.seekg(276,ios::beg);                  // Record data
+  datfile.read((char*)&c4,sizei4);
+    c4[4]='\0';
+    const uint prefixsize = atoi(c4); 			// Prefix size
+  DEBUG << "prefix size: " << prefixsize;
+  DEBUG.print();
+    
   datfile.read((char*)&c8,sizei8);
     c8[8]='\0';
     const uint numbytesdata = atoi(c8);
@@ -5017,8 +5826,8 @@ void palsar_fine_dump_data(
 
   // ______ info on data, to avoid X86 problems ______
   // ______ according to CEOS specs, byte 413 is first complex pixel, etc. ______
-  // 720 + 84124*linenum + 412
-  datfile.seekg(lenrec1 + 412,ios::beg);
+  // 720 + 84124*linenum + 412 
+  datfile.seekg(lenrec1 + prefixsize,ios::beg);
 
   matrix <real4> TMPREAL4(1,2);
   datfile >> TMPREAL4;          // read in first complex pixel for test
@@ -5066,14 +5875,14 @@ void palsar_fine_dump_data(
     ERROR.reset();
     }
 
-  const int32 TEN        = 10;
-  const int32 TENPERCENT = int32((.5*TEN+numlines)/TEN);        // number of lines
+  const int64 TEN        = 10;
+  const int64 TENPERCENT = int64((.5*TEN+numlines)/TEN);        // number of lines
   int32 percentage       = 0;                                   // initialization
-  const int32 tmpstart   = lenrec1+412-lendatarec2+(pixelstart-1)*8;    // sizeof=8
+  const int64 tmpstart   = int64(lenrec1)+int64(prefixsize)-int64(lendatarec2)+int64((pixelstart-1)*8);    // sizeof=8
   char  pD,*pc;
-  for (register int32 linecnt=linestart; linecnt<=lineend; linecnt++)
+  for (register int64 linecnt=int64(linestart); linecnt<=int64(lineend); linecnt++)
     {
-    if (!((linecnt-linestart)%TENPERCENT))
+    if (!((linecnt-int64(linestart))%TENPERCENT))
       {
       PROGRESS << "WRITESLC: " << setw(3) << percentage << "%";
       PROGRESS.print();
@@ -5083,7 +5892,7 @@ void palsar_fine_dump_data(
     datfile    >> LINE;
     // ______ LG 28 DEC 2005: swapbytes for X86 (intel) linux cpus ______
     #ifdef __X86PROCESSOR__
-    for (int ii=0; ii<LINE.pixels(); ++ii)
+    for (int32 ii=0; ii<LINE.pixels(); ++ii)
         {
                 pc = (char*)&LINE(0,ii);
                 pD = *pc; *pc = *(pc+3); *(pc+3) = pD;

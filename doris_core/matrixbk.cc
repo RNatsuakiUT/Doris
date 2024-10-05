@@ -2078,3 +2078,105 @@ void  convert_type   (const matrix<Type> &A, const matrix<Type2> &B)
   } // END convert_type
 
 
+
+/****************************************************************
+ * shift A with factors l,p                                     *
+ * R. Natsuaki, 11-Jun-2014                                     *
+ ****************************************************************/
+template <class Type>
+matrix<Type>  matshift   (const matrix<Type> &A, int32 factorL, int32 factorP)
+  {
+  #ifdef __DEBUGMAT2
+  matDEBUG.print("matrix shift.");
+  #endif
+
+  if (factorL==0 && factorP==0)
+	  return A; 	//in case of no shift
+  int32 l=int32(A.lines());
+  int32 p=int32(A.pixels());
+  if (factorL>l || factorL< -l)
+	  factorL%=l;
+  if (factorP>p || factorP< -p)
+	  factorP%=p;
+  int32 shiftl,shiftp;
+  matrix<Type> Result=A;
+  for (uint i=0; i<l; i++)
+  {
+	  for (uint j=0; j<p; j++)
+	  {
+		  shiftl=i-factorL;
+		  if (shiftl<0)
+			  shiftl+=l;
+		  if (shiftl>l-1)
+			  shiftl-=l;
+		  shiftp=j-factorP;
+		  if (shiftp<0)
+			  shiftp+=p;
+		  if (shiftp>p-1)
+			  shiftp-=p;
+		  Result(i,j)=A(uint(shiftl),uint(shiftp));
+	  }
+  }
+  return Result;
+  } // END matshift
+
+
+/****************************************************************
+ * convolute filter                                             *
+ * R. Natsuaki, 20-Aug-2014                                     *
+ ****************************************************************/
+template <class Type>
+matrix<Type>  convflt (const matrix<Type> &A, const matrix<Type> &B)
+  {
+  #ifdef __DEBUGMAT2
+  matDEBUG.print("matrix convolution");
+  #endif
+  int32 lB =int32(B.lines());
+  int32 pB =int32(B.pixels());
+  if (lB%2==0 || pB%2==0)
+	  matERROR.print("filter is not odd");
+  int32 l=int32(A.lines())-lB+1;
+  int32 p=int32(A.pixels())-pB+1;
+  if (l<1 || p<1)
+	  matERROR.print("filter is larger than original");
+  int32 shiftl,shiftp;
+  matrix<Type> Result(l,p);
+  for (uint i=0; i<l; i++)
+  {
+	  for (uint j=0; j<p; j++)
+	  {
+		  window msktmp(i,i+lB-1,j,j+pB-1);
+		  matrix<Type> mattmp =A.getdata(msktmp) * B;
+		  Type X=0.0;
+		  for (uint g=0; g<lB; g++)
+			  for (uint h=0; h<pB; h++)
+				  X+=mattmp(g,h);
+		  Result(i,j)=X;
+	  }
+  }
+  return Result;
+  } // END fltconv
+
+/****************************************************************
+ * make lanczos filter                                          *
+ * R. Natsuaki, 20-Aug-2014                                     *
+ ****************************************************************/
+template <class Type>
+matrix<Type>  mklanczmsk  (const Type &R,  real4 B, real4 C)
+  {
+	real4 A = abs(R);
+	int32 resl=int32(A*2 +1);
+    real4 ctp = A/(pow(PI,2.0));
+	matrix<Type> Result(resl,resl);
+	for (register uint i = 0; i<resl; i++)
+	{
+		for (register uint j = 0; j<resl; j++)
+		{
+			real4 r = sqrt(pow(A-real4(i)+B,2.0) + pow(A-real4(j)+C,2.0));
+			Result(i,j)=complr4(ctp*sin(PI*r)*sin(PI*r/A)/(pow(r,2.0)));
+		}
+	}
+	return Result;
+  } // END make lanczos matrix
+
+  

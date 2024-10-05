@@ -109,7 +109,7 @@ slcimage::slcimage()
   coarseorbitoffsetL      = 0;                  // by default, [FvL]
   coarseorbitoffsetP      = 0;                  // by default, [FvL]
   ovs_rg                  = 1;                  // by default
-  ovs_az                  = 1;                  // by default
+  ovs_az                  = 1.0;                // by default (Should be real number [RN])
   az_timing_error         = 0;                  // by default, [FvL] unit lines
   r_timing_error          = 0;                  // by default, [FvL] unit pixels see slcimage.hh
   timingerror_flag        = false;              // by default, [MA]
@@ -319,7 +319,8 @@ void slcimage::fillslcimage(const char* file)
            << "]: string: \"First_pixel_azimuth_time\",    (derived) value: "
            << t_azi1;
       DEBUG.print();
-      
+      INFO << "sec of day of first azimuth line: " << t_azi1;
+      INFO.print();
       }
 
     else if (!strcmp(word,"Pulse_Repetition_Frequency"))
@@ -692,6 +693,32 @@ void slcimage::fillslcimage(const char* file)
             DEBUG.print("Substring \"PRODUCT ALOS\" found in Product type specifier.");
             sensor = SLC_ALOS;
           }
+        // for ALOS-2 File [RN]
+        next_pch = strstr (next_word,"ALOS-2"); // without this
+        if (next_pch != NULL)
+          {
+            DEBUG.print("Substring \"PRODUCT ALOS-2\" found in Product type specifier.");
+            sensor = SLC_ALOS2;
+          }
+        next_pch = strstr (next_word,"ALOS-4"); // without this
+        if (next_pch != NULL)
+          {
+            DEBUG.print("Substring \"PRODUCT ALOS-4\" found in Product type specifier.");
+            sensor = SLC_ALOS4;
+          }
+        // for ASNARO-2 File [RN]
+        next_pch = strstr (next_word,"ASNARO-2"); // without this
+        if (next_pch != NULL)
+          {
+            DEBUG.print("Substring \"PRODUCT ASNARO-2\" found in Product type specifier.");
+            sensor = SLC_ASNARO2;
+          }
+        next_pch = strstr (next_word,"STRIX"); // without this
+        if (next_pch != NULL)
+          {
+            DEBUG.print("Substring \"PRODUCT STRIX\" found in Product type specifier.");
+            sensor = SLC_Strix;
+          }
 
         next_pch = strstr (next_word,"RSAT");
         if (next_pch != NULL) 
@@ -889,6 +916,26 @@ void slcimage::fillslcimage(const char* file)
       INFO.print("Yeah, ALOS!");
       WARNING.print("ALOS detected: this is still in development.");
       WARNING.print(" +main difficulty coregistering actual doppler focused data.");
+    }
+  if (sensor==SLC_ALOS2)
+    {
+      INFO.print("Yeah, ALOS2!");
+      WARNING.print("ALOS-2 detected: this is still in development.");
+      WARNING.print(" +main difficulty so many modes.");
+    }
+  if (sensor==SLC_ALOS4)
+    {
+      INFO.print("Yeah, ALOS4!");
+      WARNING.print("ALOS-4 detected: this is still in development.");
+      WARNING.print(" +main difficulty so many modes.");
+    }
+  if (sensor==SLC_ASNARO2)
+    {
+      INFO.print("Yeah, ASNARO-2!");
+    }
+  if (sensor==SLC_Strix)
+    {
+      INFO.print("Yeah, Strix of Synspective!");
     }
   if (sensor==SLC_TSX)
     {
@@ -1159,17 +1206,21 @@ void slcimage::updateslcimage(
       {
       resfile >> tmpmultilookL; 
       found_mlL = true;
-      ovs_az    = int32(1.0/tmpmultilookL+0.5);// round to integer
+      ovs_az    = real8(1.0/tmpmultilookL);// round to real8
+      //ovs_az    = int32(1.0/tmpmultilookL+0.5);// round to integer
       // ovs_az    = (tmpmultilookL > 1.0) ? (1.0/tmpmultilookL) : int32(1.0/tmpmultilookL+0.5);// round to integer
       // comment below error msg and edit slcimage.hh to define real8 ovs_az  [TODO] multilook test
       DEBUG << "String: \"Multilookfactor_azimuth_direction:\", value: "
             << tmpmultilookL;
       DEBUG.print();
+      // [RN] Implimented following one by oversampling.
+      /*
       if (tmpmultilookL > 1.0)
         {
         PRINT_ERROR("Decimation of slc along azimuth direction not implemented yet.");
         throw(file_error);
         }
+      */
       }
 
     // --- Only present in OVS section ---

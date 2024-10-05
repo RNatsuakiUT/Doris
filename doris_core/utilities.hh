@@ -93,7 +93,7 @@ inline bool isodd (const uint64 &w)             {return w%2;}
 inline bool ispower2 (const uint &w)
   {if (w==1   || w==2    || w==4    || w==8    || w==16   ||
        w==32  || w==64   || w==128  || w==256  ||
-       w==512 || w==1024 || w==2048 || w==4096   )
+       w==512 || w==1024 || w==2048 || w==4096 || w==8192 || w==16384   )
      return true;
    return false;}
 
@@ -133,6 +133,10 @@ inline real8 onedecimal(const real8 &x)
   {return real8(int32(x*10+0.5))/10.0;}
 inline real4 onedecimal(const real4 &x)
   {return real4(int32(x*10+0.5))/10.0;}
+inline real8 twodecimal(const real8 &x)
+  {return real8(int32(x*100+0.5))/100.0;}
+inline real4 twodecimal(const real4 &x)
+  {return real4(int32(x*100+0.5))/100.0;}
 
 
 

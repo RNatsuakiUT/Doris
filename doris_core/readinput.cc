@@ -40,7 +40,7 @@
 #include <cstring>              // for strcmp etc.
 #include <cstdlib>              // exit, atoi
 #include <cctype>               // isspace
-
+#include <algorithm>
 
 
 // ______ displevel used in ioroutines.h, changed here ______
@@ -441,6 +441,7 @@ void readinput(
   //setunspecified(interferoinput.foflatearth);         // check later, then set default
   interferoinput.multilookL     = 5;                    // default multilookfactor
   interferoinput.multilookP     = 1;                    // default multilookfactor
+  interferoinput.sfsmulti       = 1;                    // default multilookfactor for sfs-spec [RN]
 
   coherenceinput.method         = coh_oldmethod;        // default method
   setunspecified(coherenceinput.focoh);                 // check later, then set default
@@ -1051,6 +1052,8 @@ void readinput(
           onlyprocess=pr_i_comprefpha;
         else if (!strcmp(keyword,"SUBTRREFPHA"))
           onlyprocess=pr_i_subtrrefpha;
+        else if (!strcmp(keyword,"SFSSPEC"))
+          onlyprocess=pr_i_sfsspec;
         else if (!strcmp(keyword,"COMPREFDEM"))
           onlyprocess=pr_i_comprefdem;
         else if (!strcmp(keyword,"SUBTRREFDEM"))
@@ -1161,6 +1164,8 @@ void readinput(
           generalinput.process[pr_i_comprefpha] = 1;
         else if (!strcmp(keyword,"SUBTRREFPHA"))
           generalinput.process[pr_i_subtrrefpha] = 1;
+        else if (!strcmp(keyword,"SFSSPEC"))
+          generalinput.process[pr_i_sfsspec] = 1;
         else if (!strcmp(keyword,"COMPREFDEM"))
           generalinput.process[pr_i_comprefdem] = 1;
         else if (!strcmp(keyword,"SUBTRREFDEM"))
@@ -1490,6 +1495,14 @@ void readinput(
         m_readfilesinput.sensor_id=SLC_JERS;
       else if (!strcmp(keyword,"ALOS"))              // alos FBS  [DON] 
         m_readfilesinput.sensor_id=SLC_ALOS;
+      else if (!strcmp(keyword,"ALOS-2"))            // ALOS-2  [RN] 
+        m_readfilesinput.sensor_id=SLC_ALOS2;
+      else if (!strcmp(keyword,"ALOS-4"))            // ALOS-4  [RN] 
+        m_readfilesinput.sensor_id=SLC_ALOS4;
+      else if (!strcmp(keyword,"ASNARO-2"))            // ASNARO-2  [RN] 
+        m_readfilesinput.sensor_id=SLC_ASNARO2;
+      else if (!strcmp(keyword,"STRIX"))            // Strix  [RN] 
+        m_readfilesinput.sensor_id=SLC_Strix;
       else if (!strcmp(keyword,"TSX"))               // TSX    [PM]
         m_readfilesinput.sensor_id=SLC_TSX;
       else if (!strcmp(keyword,"TERRASARX"))         // TSX
@@ -1614,6 +1627,14 @@ void readinput(
         s_readfilesinput.sensor_id=SLC_JERS;
       else if (!strcmp(keyword,"ALOS"))              // [DON]
         s_readfilesinput.sensor_id=SLC_ALOS;
+      else if (!strcmp(keyword,"ALOS-2"))              // [RN]
+        s_readfilesinput.sensor_id=SLC_ALOS2;
+      else if (!strcmp(keyword,"ALOS-4"))              // [RN]
+        s_readfilesinput.sensor_id=SLC_ALOS4;
+      else if (!strcmp(keyword,"ASNARO-2"))              // [RN]
+        s_readfilesinput.sensor_id=SLC_ASNARO2;
+      else if (!strcmp(keyword,"STRIX"))              // [RN]
+        s_readfilesinput.sensor_id=SLC_Strix;
       else if (!strcmp(keyword,"TSX"))               // TSX [PM]
         s_readfilesinput.sensor_id=SLC_TSX;
       else if (!strcmp(keyword,"TERRASARX"))         // TSX
@@ -2026,12 +2047,14 @@ void readinput(
         "(M_OVS_FACT_AZI < 1) Oversampling ratio must be at least 1.");
         throw(keyword_error);
         }
+      /*
       if (m_oversample.OsrAzimuth > 2)
         {
         PRINT_ERROR(
         "(M_OVS_FACT_AZI > 2) Not implemented!");
         throw(keyword_error);
         }
+      */
       }                                                  
 
 // ********************************************************************** 
@@ -2044,12 +2067,14 @@ void readinput(
         PRINT_ERROR("(S_OVS_FACT_AZI < 1) Oversampling ratio must be at least 1.");
         throw(keyword_error);
         }
+      /*
       if (s_oversample.OsrAzimuth > 2)
         {
         PRINT_ERROR(
         "(S_OVS_FACT_AZI > 2) Not implemented!");
         throw(keyword_error);
         }
+      */
       }                                                  
 
 // ********************************************************************** 
@@ -3553,6 +3578,15 @@ void readinput(
       interferoinput.multilookP  = atoi(word[2]);       // pass keyword
       writearg(interferoinput.multilookL);
       writearg(interferoinput.multilookP);
+      }
+
+// **********************************************************************
+// *** COMPUTATION OF SFS-SPEC
+// **********************************************************************
+    else if (!strcmp(keyword,"SFSSPEC_MULTILOOK"))        // multilookfactors
+      {
+      interferoinput.sfsmulti  = atoi(word[1]);       // pass keyword
+      writearg(interferoinput.sfsmulti);
       }
 
 // **********************************************************************

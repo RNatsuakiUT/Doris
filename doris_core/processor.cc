@@ -291,14 +291,19 @@ int main(
     switch (input_m_readfiles.sensor_id)
       {
       case SLC_ALOS:
-        INFO.print("ALOS: Under development: is ALOS really CEOS/Atlantis like ERS?");
+      case SLC_ALOS2:
+      case SLC_ALOS2SP:
+      case SLC_ALOS2SCB:
+      case SLC_ALOS4:
+      case SLC_ASNARO2:
+      case SLC_Strix:
       // ______ JERS also ceos? (falls through to ers) ______
       case SLC_JERS:
-        INFO.print("JERS: Under development: is JERS really CEOS like ERS?");
+        //INFO.print("JERS: Under development: is JERS really CEOS like ERS?");
       // ______ RSAT also CEOS? (falls through to ERS, account in reader) ______
       case SLC_RSAT:
-        WARNING.print("RSAT: for orbit highest polyfit recommended.");
-        WARNING.print("RSAT: Under development: CEOS reader seems to work.");
+        //WARNING.print("RSAT: for orbit highest polyfit recommended.");
+        //WARNING.print("RSAT: Under development: CEOS reader seems to work.");
       // ______ ERS-1/2 ______
       case SLC_ERS:
         // ______ Get checks slave volumefile ______
@@ -689,6 +694,12 @@ int main(
         switch (master.sensor)
           {
             case SLC_ALOS:
+            case SLC_ALOS2:
+            case SLC_ALOS2SP:
+            case SLC_ALOS2SCB:
+            case SLC_ALOS4:
+            case SLC_ASNARO2:
+            case SLC_Strix:
                     char c8checkleadata[9]; // check vol met lea en dat
                 readres(c8checkleadata,sizeof(c8checkleadata),
                   input_general.m_resfile,"(Check)Number",5);
@@ -844,12 +855,7 @@ int main(
 // ______ Generate magnitude preview of master SLC if requested ______
   if (input_general.process[pr_m_crop])
     {
-    PROGRESS.print("calling preview for cropped master");
-    if (master.sensor!=SLC_RSAT && master.sensor!=SLC_ALOS && master.sensor!=SLC_TSX && master.sensor!=SLC_CSK ) // master, slave , resampled slave TODO: convert to preview function 
-      preview(input_general.preview,
-            master.currentwindow.pixels(), master.formatflag,
-            master.file, "master_mag.ras", 
-            "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 2/10"); // general                             //TODO hi CSK
+    PROGRESS.print("calling preview for cropped master");                           //TODO hi CSK
 //    else if (master.sensor == SLC_ALOS)
 //      preview(input_general.preview,
 //              master.currentwindow.pixels(), master.formatflag,
@@ -857,16 +863,36 @@ int main(
 //              "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 2/2");   // ALOS VV/HH az/ra 5/5 m
 //    else if (master.sensor == SLC_ALOS || master.sensor == SLC_TSX)     
 //    else if (master.sensor == SLC_ALOS || master.sensor == SLC_TSX || master.sensor == SLC_RS2 || master.sensor == SLC_CSK )         
-    else if (master.sensor == SLC_ALOS || master.sensor == SLC_TSX || master.sensor == SLC_CSK )         
+    if (master.sensor == SLC_TSX || master.sensor == SLC_CSK )         
       preview(input_general.preview,
             master.currentwindow.pixels(), master.formatflag,
             master.file, "master_mag.ras", 
             "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10"); // [MA] higher mlook to reduce filesize
-    else//multilooking depends on beam
+    else if (master.sensor == SLC_ALOS || master.sensor == SLC_ASNARO2)     
+        preview(input_general.preview,
+            master.currentwindow.pixels(), master.formatflag,
+            master.file, "master_mag.ras", 
+            "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10"); // 
+    else if (master.sensor == SLC_ALOS2 || master.sensor == SLC_ALOS4 )     
+        preview(input_general.preview,
+            master.currentwindow.pixels(), master.formatflag,
+            master.file, "master_mag.ras", 
+            "-e 0.3 -s 5.0 -q mag -o sunraster -b -c gray -M 10/10"); // [RN] ALOS-2 has too large dinamic range
+    else if (master.sensor == SLC_Strix)     
+        preview(input_general.preview,
+            master.currentwindow.pixels(), master.formatflag,
+            master.file, "master_mag.ras", 
+            "-e 0.5 -s 10.0 -q mag -o sunraster -b -c gray -M 10/10"); // [RN] Strix has large dinamic range
+    else if (master.sensor == SLC_RSAT) // master, slave , resampled slave TODO: convert to preview function 
       preview(input_general.preview,
             master.currentwindow.pixels(), master.formatflag,
             master.file, "master_mag.ras", 
             "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 5/6");
+    else//multilooking depends on beam
+      preview(input_general.preview,
+            master.currentwindow.pixels(), master.formatflag,
+            master.file, "master_mag.ras", 
+            "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 2/10"); // general 
     }
 
 
@@ -906,7 +932,7 @@ int main(
       }
 
     // ______ Oversample master image ______
-    OversampleSLC(input_general,master,input_m_oversample,MASTERID);
+    OversampleSLC(input_general,master,input_m_oversample,MASTERID,1.0);
     updatefile("scratchoversample",input_general.m_resfile);    // update resfile
 
     PROGRESS.print("Finished M_OVS.");
@@ -934,7 +960,7 @@ int main(
     preview(input_general.preview,
             master.currentwindow.pixels(), master.formatflag,
             master.file, "master_ovs_mag.ras", 
-            "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 4/4");
+            "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");
     }
 
 
@@ -1007,7 +1033,7 @@ int main(
       preview(input_general.preview,
             int32((simamp.win.pixels()/simamp.multilookP)), simamp.formatflag,
             simamp.file, "master_simamp.ras", 
-            "-e 1.0 -s 1.0 -q normal -o sunraster -b -c gray -M 2/10");
+            "-e 1.0 -s 1.0 -q normal -o sunraster -b -c gray -M 10/10");
     else//multilooking depends on beam
       preview(input_general.preview,
             int32((simamp.win.pixels()/simamp.multilookP)), simamp.formatflag,
@@ -1136,13 +1162,19 @@ int main(
     switch (input_s_readfiles.sensor_id)
       {
       case SLC_ALOS:
-        INFO.print("ALOS: Under development: is ALOS really CEOS/Atlantis like ERS?");
+        //INFO.print("ALOS: Under development: is ALOS really CEOS/Atlantis like ERS?");
+      case SLC_ALOS2:
+      case SLC_ALOS2SP:
+      case SLC_ALOS2SCB:
+      case SLC_ALOS4:
+      case SLC_ASNARO2:
+      case SLC_Strix:
       // ______ JERS also ceos? (falls through to ers) ______
       case SLC_JERS:
-        INFO.print("JERS: Under development: is JERS really CEOS like ERS?");
+        //INFO.print("JERS: Under development: is JERS really CEOS like ERS?");
       // ______ RSAT also CEOS? (falls through to ERS, account in reader) ______
       case SLC_RSAT:
-        WARNING.print("RSAT: CEOS reader seems to work.");
+        //WARNING.print("RSAT: CEOS reader seems to work.");
       // ______ ERS-1/2 ______
       case SLC_ERS:
         // ______ Get checks with master volumefile ______
@@ -1554,6 +1586,12 @@ int main(
         {
         // _____ start added by don       
       case SLC_ALOS:
+      case SLC_ALOS2:
+      case SLC_ALOS2SP:
+      case SLC_ALOS2SCB:
+      case SLC_ALOS4:
+      case SLC_ASNARO2:
+      case SLC_Strix:
                char c8checkleadata[9];    // check vol met lea en dat
           readres(c8checkleadata,sizeof(c8checkleadata),
           input_general.s_resfile,"(Check)Number",5);
@@ -1712,21 +1750,36 @@ int main(
   if (input_general.process[pr_s_crop])
     {
     PROGRESS.print("calling preview for cropped slave");
-    if (slave.sensor!=SLC_RSAT && slave.sensor!=SLC_ALOS && slave.sensor!=SLC_TSX && slave.sensor!=SLC_CSK) // RS2
-      preview(input_general.preview,
-              slave.currentwindow.pixels(), slave.formatflag,
-              slave.file, "slave_mag.ras", 
-              "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 2/10");
-    else if (slave.sensor == SLC_ALOS || slave.sensor == SLC_TSX || slave.sensor == SLC_CSK)
+    if (slave.sensor == SLC_TSX || slave.sensor == SLC_CSK)
       preview(input_general.preview,
             slave.currentwindow.pixels(), slave.formatflag,
             slave.file, "slave_mag.ras", 
             "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");  // [MA] higher mlook to reduce filesize
-    else// multilooking depends on beam
+    else if (slave.sensor == SLC_ALOS || slave.sensor == SLC_ASNARO2)
+      preview(input_general.preview,
+            slave.currentwindow.pixels(), slave.formatflag,
+            slave.file, "slave_mag.ras", 
+            "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");  // [RN] higher mlook to reduce filesize
+    else if (slave.sensor == SLC_ALOS2 || slave.sensor == SLC_ALOS4)
+      preview(input_general.preview,
+            slave.currentwindow.pixels(), slave.formatflag,
+            slave.file, "slave_mag.ras", 
+            "-e 0.3 -s 5.0 -q mag -o sunraster -b -c gray -M 10/10");  // [RN] higher mlook to reduce filesize
+    else if (slave.sensor == SLC_Strix)
+      preview(input_general.preview,
+            slave.currentwindow.pixels(), slave.formatflag,
+            slave.file, "slave_mag.ras", 
+            "-e 0.5 -s 10.0 -q mag -o sunraster -b -c gray -M 10/10");  // [RN] higher mlook to reduce filesize
+    else if (slave.sensor == SLC_RSAT) // RS2
       preview(input_general.preview,
               slave.currentwindow.pixels(), slave.formatflag,
               slave.file, "slave_mag.ras", 
               "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 5/6");
+    else// multilooking depends on beam
+      preview(input_general.preview,
+              slave.currentwindow.pixels(), slave.formatflag,
+              slave.file, "slave_mag.ras", 
+              "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 2/10");
     }
 
 
@@ -1738,6 +1791,8 @@ int main(
     {
     PROGRESS.print("Start S_OVS.");
     alreadyprocessed[pr_s_oversample]=1;  // update alreadypr.
+    real8 prfr =1.0;
+    real8 m_ovsaz=master.ovs_az;
     if (input_general.interactive)
       {
       cerr << "\nProcessing oversample for slave.";
@@ -1780,9 +1835,14 @@ int main(
       if (input_s_oversample.OsrAzimuth != checkOsrAzimuth)
         WARNING.print("Master and Slave azimuth oversampling factors should be identical!!!");
       }
+    if (((master.prf/m_ovsaz)/slave.prf) >1.015 || ((master.prf/m_ovsaz)/slave.prf)<0.985) // Adopt multiple PRF
+      {
+    	WARNING.print("Master and Slave PRF is different more than 1.5% try to resample");
+    	prfr = (master.prf/m_ovsaz)/slave.prf;
+      }
 
     // ______ Oversample slave image ______
-    OversampleSLC(input_general,slave,input_s_oversample,SLAVEID);
+    OversampleSLC(input_general,slave,input_s_oversample,SLAVEID,prfr);
     updatefile("scratchoversample",input_general.s_resfile);    // update resfile
     PROGRESS.print("Finished S_OVS.");
     DEBUG.print("Time spent for oversampling slave:");
@@ -1808,7 +1868,7 @@ int main(
     preview(input_general.preview,
             slave.currentwindow.pixels(), slave.formatflag,
             slave.file, "slave_ovs_mag.ras", 
-            "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 4/4");
+            "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");
     }
 //____RaffaeleNutricato END MODIFICATION SECTION 6
 
@@ -2124,8 +2184,8 @@ int main(
     //Computes a radar-coded DEM using the code of demassist
     // setunspecified(input_i_fine.firefdem);   //testing
     //  setunspecified(input_i_fine.forefdem);  //testing
-      if (input_i_fine.method == fc_coherence && specified( input_i_fine.firefdem)) 
-  {
+    if (input_i_fine.method == fc_coherence && specified( input_i_fine.firefdem)) 
+    {
           
      input_comprefdem input_fine_dem;
      setunspecified(input_fine_dem.firefdem);             // check later, mandatory
@@ -2174,7 +2234,7 @@ int main(
 
      
    
-  }
+    }
     
   // INFO   <<"master.Ks" << master.Ks;
  //  INFO.print();
@@ -2602,21 +2662,36 @@ int main(
   if (input_general.process[pr_s_resample])
     {
     PROGRESS.print("calling preview for resampled slave");
-    if (master.sensor!=SLC_RSAT && master.sensor!=SLC_ALOS && master.sensor!=SLC_TSX )
-      preview(input_general.preview,
-              slave.currentwindow.pixels(), slave.formatflag,
-              slave.file, "slave_rs_mag.ras", 
-              "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 2/10");
-    else if (master.sensor == SLC_ALOS || master.sensor == SLC_TSX )
+    if (master.sensor == SLC_TSX || master.sensor == SLC_CSK)
       preview(input_general.preview,
               slave.currentwindow.pixels(), slave.formatflag,
               slave.file, "slave_rs_mag.ras", 
               "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");  // [MA] higher mlook to reduce filesize
-    else//multilooking depends on beam
+    else if (master.sensor == SLC_ALOS || master.sensor == SLC_ASNARO2)
+        preview(input_general.preview,
+                slave.currentwindow.pixels(), slave.formatflag,
+                slave.file, "slave_rs_mag.ras", 
+                "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");
+    else if (master.sensor == SLC_ALOS2 || master.sensor == SLC_ALOS4)
+        preview(input_general.preview,
+                slave.currentwindow.pixels(), slave.formatflag,
+                slave.file, "slave_rs_mag.ras", 
+                "-e 0.3 -s 5.0 -q mag -o sunraster -b -c gray -M 10/10");
+    else if (master.sensor == SLC_Strix)
+        preview(input_general.preview,
+                slave.currentwindow.pixels(), slave.formatflag,
+                slave.file, "slave_rs_mag.ras", 
+                "-e 0.5 -s 10.0 -q mag -o sunraster -b -c gray -M 10/10");
+    else if (master.sensor == SLC_RSAT)
       preview(input_general.preview,
               slave.currentwindow.pixels(), slave.formatflag,
               slave.file, "slave_rs_mag.ras", 
               "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 5/6");
+    else//multilooking depends on beam
+      preview(input_general.preview,
+              slave.currentwindow.pixels(), slave.formatflag,
+              slave.file, "slave_rs_mag.ras", 
+              "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 2/10");
     }
 
 
@@ -2769,15 +2844,15 @@ int main(
     preview(input_general.preview,
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 2/2");
+            "interferogram_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_pha.ras", "-q phase -o sunraster -b -c jet -M 2/2");
+            "interferogram_pha.ras", "-q phase -o sunraster -b -c jet -M 10/10");
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c hsv -M 2/2");
+            "interferogram_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c hsv -M 10/10");
     }
 
 
@@ -2896,21 +2971,57 @@ int main(
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_srp_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 2/2");
+            "interferogram_srp_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_srp_pha.ras", "-q phase -o sunraster -b -c jet -M 2/2");
+            "interferogram_srp_pha.ras", "-q phase -o sunraster -b -c jet -M 10/10");
+      preview(input_general.preview, 
+              int32((interferogram.win.pixels()/interferogram.multilookP)),
+              interferogram.formatflag, interferogram.file,
+              "interferogram_srp_pha_sp.ras", "-q sp -o sunraster -b -c jet -M 10/10");
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_srp_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c jet -M 2/2"); // MA
+            "interferogram_srp_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c jet -M 10/10"); // MA
             //"interferogram_srp_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c cool -M 2/2");
     if (input_i_subtrrefpha.dumponlyrefpha==true)
       {INFO.print("exiting, only dumped refpha"); exit(1);}
     }
 
 
+
+  // ====== COMPUTE SFS-SPEC HERE =====
+    if (input_general.process[pr_i_sfsspec])
+      {
+  	    PROGRESS.print("Start SFS-SPEC.");
+  	    alreadyprocessed[pr_i_sfsspec]=1;                       // update alreadypr.
+  	    if (interferogram.sfsmulti != input_i_interfero.sfsmulti)
+  	    	interferogram.sfsmulti = input_i_interfero.sfsmulti; //just in case
+    sfsspec(input_general,master,slave,baseline,interferogram);
+    PROGRESS.print("Finished SFS-SPEC.");
+    DEBUG.print("Time spent for SFS-SPEC:");
+    printcpu(); 
+    preview(input_general.preview,
+  		  slave.currentwindow.pixels(), slave.formatflag,
+  		  slave.file, "slave_SFS-SPEC_mag.ras", "-e 0.5 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10"); 
+    preview(input_general.preview, 
+            int32((interferogram.win.pixels()/interferogram.multilookP)),
+            interferogram.formatflag, interferogram.file,
+            "interferogram_srp_SFS-SPEC_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");
+    preview(input_general.preview, 
+            int32((interferogram.win.pixels()/interferogram.multilookP)),
+            interferogram.formatflag, interferogram.file,
+            "interferogram_srp_SFS-SPEC_pha.ras", "-q phase -o sunraster -b -c jet -M 10/10");
+    preview(input_general.preview, 
+            int32((interferogram.win.pixels()/interferogram.multilookP)),
+            interferogram.formatflag, interferogram.file,
+            "interferogram_srp_SFS-SPEC_pha_sp.ras", "-q sp -o sunraster -b -c jet -M 10/10");
+    preview(input_general.preview, 
+            int32((interferogram.win.pixels()/interferogram.multilookP)),
+            interferogram.formatflag, interferogram.file,
+            "interferogram_srp_SFS-SPEC_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c cool -M 10/10");
+      }
 
 // ====== COMPUTE REFERENCE PHASE (DEM) ======
   if (input_general.process[pr_i_comprefdem])
@@ -3009,15 +3120,19 @@ int main(
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_srd_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 2/2");
+            "interferogram_srd_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_srd_pha.ras", "-q phase -o sunraster -b -c jet -M 2/2");
+            "interferogram_srd_pha.ras", "-q phase -o sunraster -b -c jet -M 10/10");
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_srd_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c jet -M 2/2"); //MA
+            "interferogram_srd_pha_sp.ras", "-q sp -o sunraster -b -c jet -M 10/10");
+    preview(input_general.preview, 
+            int32((interferogram.win.pixels()/interferogram.multilookP)),
+            interferogram.formatflag, interferogram.file,
+            "interferogram_srd_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c jet -M 10/10"); //MA
             //"interferogram_srd_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c hot -M 2/2");
     }
 
@@ -3170,15 +3285,19 @@ int main(
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_filt_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 2/2");
+            "interferogram_filt_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_filt_pha.ras", "-q phase -o sunraster -b -c jet -M 2/2");
+            "interferogram_filt_pha.ras", "-q phase -o sunraster -b -c jet -M 10/10");
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_filt_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c hsv -M 2/2");
+            "interferogram_filt_pha_sp.ras", "-q sp -o sunraster -b -c jet -M 10/10");
+    preview(input_general.preview, 
+            int32((interferogram.win.pixels()/interferogram.multilookP)),
+            interferogram.formatflag, interferogram.file,
+            "interferogram_filt_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c hsv -M 10/10");
     }
 
 
@@ -3225,15 +3344,15 @@ int main(
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_dinsar_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 2/2");
+            "interferogram_dinsar_mag.ras", "-e 0.3 -s 1.0 -q mag -o sunraster -b -c gray -M 10/10");
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_dinsar_pha.ras", "-q phase -o sunraster -b -c jet -M 2/2");
+            "interferogram_dinsar_pha.ras", "-q phase -o sunraster -b -c jet -M 10/10");
     preview(input_general.preview, 
             int32((interferogram.win.pixels()/interferogram.multilookP)),
             interferogram.formatflag, interferogram.file,
-            "interferogram_dinsar_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c jet -M 2/2");
+            "interferogram_dinsar_mix.ras", "-e 0.3 -s 1.2 -q mixed -o sunraster -b -c jet -M 10/10");
     }
 
 
@@ -3948,7 +4067,7 @@ void quote()
     "The nice part about being a pessimist is that you are constantly being either proven right or pleasantly surprised. -- George F. Will", //155
     "Statistics are like a bikini. What they reveal is suggestive, but what they conceal is vital. -Aaron Levenstein",
     "A pessimist sees the difficulty in every opportunity; an optimist sees the opportunity in every difficulty.  Churchill",
-    "Any sufficiently advanced technology is indistinguishable from magic – Arthur C. Clarke",
+    "Any sufficiently advanced technology is indistinguishable from magic. -Arthur C. Clarke",
     "Pilot: \"...Tower, please call me a fuel truck.\"\n Tower: \"Roger. You are a fuel truck.\"",
     ""};
 

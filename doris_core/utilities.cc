@@ -107,6 +107,7 @@ void getorb(
 
   // ______ Convert times to struct tm ______
   struct tm tijdstart;
+  memset(&tijdstart, 0, sizeof(struct tm));
   strptime(image.utc1,"%d-%b-%Y %T",&tijdstart);
   DEBUG << "value of image.utc1: " << image.utc1;
   DEBUG.print();
@@ -134,6 +135,7 @@ void getorb(
     t2seconds -= BEFOREFIRST;
     }
   struct tm tijdend = tijdstart;                // copy year, month, day
+  memset(&tijdend, 0, sizeof(struct tm));
   tijdend.tm_hour =  t2seconds / 3600;
   tijdend.tm_min  = (t2seconds-3600*tijdend.tm_hour) / 60;
   tijdend.tm_sec  = (t2seconds-3600*tijdend.tm_hour) % 60;
@@ -897,6 +899,21 @@ matrix<Type> polyval(
   register Type c23;
   register Type c14;
   register Type c05;
+  register Type c60;
+  register Type c51;
+  register Type c42;
+  register Type c33;
+  register Type c24;
+  register Type c15;
+  register Type c06;
+  register Type c70;
+  register Type c61;
+  register Type c52;
+  register Type c43;
+  register Type c34;
+  register Type c25;
+  register Type c16;
+  register Type c07;
   switch (degreee)
     {
     case 0:                                     // constant
@@ -1103,8 +1120,8 @@ matrix<Type> polyval(
           }
         break;
 
-// ______ solve up to 5 efficiently, do rest in loop ______
-      default:
+        // [RN] case 6 and 7 added
+    case 6:
         c00 = coeff(0,0);
         c10 = coeff(1,0);
         c01 = coeff(2,0);
@@ -1126,31 +1143,47 @@ matrix<Type> polyval(
         c23 = coeff(18,0);
         c14 = coeff(19,0);
         c05 = coeff(20,0);
+        c60 = coeff(21,0);
+        c51 = coeff(22,0);
+        c42 = coeff(23,0);
+        c33 = coeff(24,0);
+        c24 = coeff(25,0);
+        c15 = coeff(26,0);
+        c06 = coeff(27,0);
         for (j=0; j<Result.pixels(); j++)
           {
           Type y1 = y(j,0);
           Type y2 = sqr(y1);
           Type y3 = y2*y1;
+          Type y4 = sqr(y2);
           Type c00pc01y1 = c00 + c01 * y1;
-          Type c02y2 = c02 * y2;
           Type c11y1 = c11 * y1;
+          Type c02y2 = c02 * y2;
           Type c21y1 = c21 * y1;
           Type c12y2 = c12 * y2;
           Type c03y3 = c03 * y3;
           Type c31y1 = c31 * y1;
           Type c22y2 = c22 * y2;
           Type c13y3 = c13 * y3;
-          Type c04y4 = c04 * y2 * y2;
+          Type c04y4 = c04 * y4;
           Type c41y1 = c41 * y1;
           Type c32y2 = c32 * y2;
           Type c23y3 = c23 * y3;
-          Type c14y4 = c14 * y2 * y2;
+          Type c14y4 = c14 * y4;
           Type c05y5 = c05 * y3 * y2;
+          Type c51y1 = c51 * y1;
+          Type c42y2 = c42 * y2;
+          Type c33y3 = c33 * y3;
+          Type c24y4 = c24 * y4;
+          Type c15y5 = c15 * y3 * y2;
+          Type c06y6 = c06 * y3 * y3;
+
           for (i=0; i<Result.lines(); i++)
             {
             Type x1 = x(i,0);
             Type x2 = sqr(x1);
             Type x3 = x1*x2;
+            Type x4 = sqr(x2);
             Result(i,j) =  c00pc01y1 
                          + c10   * x1 
                          + c20   * x2 
@@ -1160,24 +1193,273 @@ matrix<Type> polyval(
                          + c21y1 * x2
                          + c12y2 * x1
                          + c03y3
-                         + c40   * x2 * x2
+                         + c40   * x4
                          + c31y1 * x3
                          + c22y2 * x2
                          + c13y3 * x1
                          + c04y4
                          + c50   * x3 * x2
-                         + c41y1 * x2 * x2
+                         + c41y1 * x4
                          + c32y2 * x3
                          + c23y3 * x2
                          + c14y4 * x1
-                         + c05y5;
+                         + c05y5
+                         + c60   * x3 * x3
+                         + c51y1 * x3 * x2
+                         + c42y2 * x4
+                         + c33y3 * x3
+                         + c24y4 * x2
+                         + c15y5 * x1
+                         + c06y6;
             }
           }
+        break;
+        
+    case 7:
+        c00 = coeff(0,0);
+        c10 = coeff(1,0);
+        c01 = coeff(2,0);
+        c20 = coeff(3,0);
+        c11 = coeff(4,0);
+        c02 = coeff(5,0);
+        c30 = coeff(6,0);
+        c21 = coeff(7,0);
+        c12 = coeff(8,0);
+        c03 = coeff(9,0);
+        c40 = coeff(10,0);
+        c31 = coeff(11,0);
+        c22 = coeff(12,0);
+        c13 = coeff(13,0);
+        c04 = coeff(14,0);
+        c50 = coeff(15,0);
+        c41 = coeff(16,0);
+        c32 = coeff(17,0);
+        c23 = coeff(18,0);
+        c14 = coeff(19,0);
+        c05 = coeff(20,0);
+        c60 = coeff(21,0);
+        c51 = coeff(22,0);
+        c42 = coeff(23,0);
+        c33 = coeff(24,0);
+        c24 = coeff(25,0);
+        c15 = coeff(26,0);
+        c06 = coeff(27,0);
+        c70 = coeff(28,0);
+        c61 = coeff(29,0);
+        c52 = coeff(30,0);
+        c43 = coeff(31,0);
+        c34 = coeff(32,0);
+        c25 = coeff(33,0);
+        c16 = coeff(34,0);
+        c07 = coeff(35,0);
+        for (j=0; j<Result.pixels(); j++)
+          {
+            Type y1 = y(j,0);
+            Type y2 = sqr(y1);
+            Type y3 = y2*y1;
+            Type y4 = sqr(y2);
+            Type y5 = y3*y2;
+            Type y6 = sqr(y3);
+            Type c00pc01y1 = c00 + c01 * y1;
+            Type c11y1 = c11 * y1;
+            Type c02y2 = c02 * y2;
+            Type c21y1 = c21 * y1;
+            Type c12y2 = c12 * y2;
+            Type c03y3 = c03 * y3;
+            Type c31y1 = c31 * y1;
+            Type c22y2 = c22 * y2;
+            Type c13y3 = c13 * y3;
+            Type c04y4 = c04 * y4;
+            Type c41y1 = c41 * y1;
+            Type c32y2 = c32 * y2;
+            Type c23y3 = c23 * y3;
+            Type c14y4 = c14 * y4;
+            Type c05y5 = c05 * y5;
+            Type c51y1 = c51 * y1;
+            Type c42y2 = c42 * y2;
+            Type c33y3 = c33 * y3;
+            Type c24y4 = c24 * y4;
+            Type c15y5 = c15 * y5;
+            Type c06y6 = c06 * y6;
+            Type c61y1 = c61 * y1;
+            Type c52y2 = c52 * y2;
+            Type c43y3 = c43 * y3;
+            Type c34y4 = c34 * y4;
+            Type c25y5 = c25 * y5;
+            Type c16y6 = c16 * y6;
+            Type c07y7 = c07 * y3 * y4;
+
+            for (i=0; i<Result.lines(); i++)
+              {
+              Type x1 = x(i,0);
+              Type x2 = sqr(x1);
+              Type x3 = x1*x2;
+              Type x4 = sqr(x2);
+              Type x5 = x3*x2;
+              Type x6 = sqr(x3);
+              Result(i,j) =  c00pc01y1 
+                           + c10   * x1 
+                           + c20   * x2 
+                           + c11y1 * x1 
+                           + c02y2
+                           + c30   * x3
+                           + c21y1 * x2
+                           + c12y2 * x1
+                           + c03y3
+                           + c40   * x4
+                           + c31y1 * x3
+                           + c22y2 * x2
+                           + c13y3 * x1
+                           + c04y4
+                           + c50   * x5
+                           + c41y1 * x4
+                           + c32y2 * x3
+                           + c23y3 * x2
+                           + c14y4 * x1
+                           + c05y5
+                           + c60   * x6
+                           + c51y1 * x5
+                           + c42y2 * x4
+                           + c33y3 * x3
+                           + c24y4 * x2
+                           + c15y5 * x1
+                           + c06y6
+                           + c70   * x4 * x3
+                           + c61y1 * x6
+                           + c52y2 * x5
+                           + c43y3 * x4
+                           + c34y4 * x3
+                           + c25y5 * x2
+                           + c16y6 * x1
+                           + c07y7;
+            }
+          }
+        break;
+// ______ solve up to 5 efficiently, do rest in loop ______
+      default:
+          c00 = coeff(0,0);
+          c10 = coeff(1,0);
+          c01 = coeff(2,0);
+          c20 = coeff(3,0);
+          c11 = coeff(4,0);
+          c02 = coeff(5,0);
+          c30 = coeff(6,0);
+          c21 = coeff(7,0);
+          c12 = coeff(8,0);
+          c03 = coeff(9,0);
+          c40 = coeff(10,0);
+          c31 = coeff(11,0);
+          c22 = coeff(12,0);
+          c13 = coeff(13,0);
+          c04 = coeff(14,0);
+          c50 = coeff(15,0);
+          c41 = coeff(16,0);
+          c32 = coeff(17,0);
+          c23 = coeff(18,0);
+          c14 = coeff(19,0);
+          c05 = coeff(20,0);
+          c60 = coeff(21,0);
+          c51 = coeff(22,0);
+          c42 = coeff(23,0);
+          c33 = coeff(24,0);
+          c24 = coeff(25,0);
+          c15 = coeff(26,0);
+          c06 = coeff(27,0);
+          c70 = coeff(28,0);
+          c61 = coeff(29,0);
+          c52 = coeff(30,0);
+          c43 = coeff(31,0);
+          c34 = coeff(32,0);
+          c25 = coeff(33,0);
+          c16 = coeff(34,0);
+          c07 = coeff(35,0);
+          for (j=0; j<Result.pixels(); j++)
+            {
+              Type y1 = y(j,0);
+              Type y2 = sqr(y1);
+              Type y3 = y2*y1;
+              Type y4 = sqr(y2);
+              Type y5 = y3*y2;
+              Type y6 = sqr(y3);
+              Type c00pc01y1 = c00 + c01 * y1;
+              Type c11y1 = c11 * y1;
+              Type c02y2 = c02 * y2;
+              Type c21y1 = c21 * y1;
+              Type c12y2 = c12 * y2;
+              Type c03y3 = c03 * y3;
+              Type c31y1 = c31 * y1;
+              Type c22y2 = c22 * y2;
+              Type c13y3 = c13 * y3;
+              Type c04y4 = c04 * y4;
+              Type c41y1 = c41 * y1;
+              Type c32y2 = c32 * y2;
+              Type c23y3 = c23 * y3;
+              Type c14y4 = c14 * y4;
+              Type c05y5 = c05 * y5;
+              Type c51y1 = c51 * y1;
+              Type c42y2 = c42 * y2;
+              Type c33y3 = c33 * y3;
+              Type c24y4 = c24 * y4;
+              Type c15y5 = c15 * y5;
+              Type c06y6 = c06 * y6;
+              Type c61y1 = c61 * y1;
+              Type c52y2 = c52 * y2;
+              Type c43y3 = c43 * y3;
+              Type c34y4 = c34 * y4;
+              Type c25y5 = c25 * y5;
+              Type c16y6 = c16 * y6;
+              Type c07y7 = c07 * y3 * y4;
+
+              for (i=0; i<Result.lines(); i++)
+                {
+                Type x1 = x(i,0);
+                Type x2 = sqr(x1);
+                Type x3 = x1*x2;
+                Type x4 = sqr(x2);
+                Type x5 = x3*x2;
+                Type x6 = sqr(x3);
+                Result(i,j) =  c00pc01y1 
+                             + c10   * x1 
+                             + c20   * x2 
+                             + c11y1 * x1 
+                             + c02y2
+                             + c30   * x3
+                             + c21y1 * x2
+                             + c12y2 * x1
+                             + c03y3
+                             + c40   * x4
+                             + c31y1 * x3
+                             + c22y2 * x2
+                             + c13y3 * x1
+                             + c04y4
+                             + c50   * x5
+                             + c41y1 * x4
+                             + c32y2 * x3
+                             + c23y3 * x2
+                             + c14y4 * x1
+                             + c05y5
+                             + c60   * x6
+                             + c51y1 * x5
+                             + c42y2 * x4
+                             + c33y3 * x3
+                             + c24y4 * x2
+                             + c15y5 * x1
+                             + c06y6
+                             + c70   * x4 * x3
+                             + c61y1 * x6
+                             + c52y2 * x5
+                             + c43y3 * x4
+                             + c34y4 * x3
+                             + c25y5 * x2
+                             + c16y6 * x1
+                             + c07y7;
+              }
+            }
 
 // ______ do rest (>5) in loop ______
-WARNING.print("polyval on grid for > degree 5 : this seems to be wrong ?? BK 9 feb.00 : Is it? just check results");
-WARNING.print("polyval on grid for > degree 5 : this seems to be wrong ?? BK 9 feb.00 : Is it? just check results");
-    const int32 STARTDEGREE = 6;
+WARNING.print("polyval on grid for > degree 7 : this seems to be wrong ?? BK 9 feb.00 : Is it? just check results");
+WARNING.print("polyval on grid for > degree 7 : this seems to be wrong ?? BK 9 feb.00 : Is it? just check results");
+    const int32 STARTDEGREE = 8;
     const int32 STARTCOEFF  = Ncoeffs(STARTDEGREE-1);   // 5-> 21 6->28 7->36 etc.
     for (j=0; j<Result.pixels(); j++)
       {
@@ -1407,6 +1689,9 @@ int32 Btemp(
   struct tm tm_ref;     // reference time
   struct tm tm_master;
   struct tm tm_slave;
+  memset(&tm_ref, 0, sizeof(struct tm));
+  memset(&tm_master, 0, sizeof(struct tm));
+  memset(&tm_slave, 0, sizeof(struct tm));
   char utc_ref[ONE27] = "01-JAN-1985 00:00:01.000";
   strptime(utc_ref,"%d-%b-%Y %T",&tm_ref);
   strptime(utc_master,"%d-%b-%Y %T",&tm_master);
@@ -1907,14 +2192,14 @@ void write_kml(
   {
   TRACE_FUNCTION("write_kml (MA, FvL, BO 20100123)")
       real8 cornerPhi, cornerLam, cornerHei, One80overPi;
-      real8 north=0;//initialize values...
-      real8 south=0;
-      real8 east=0;
-      real8 west=0;
-      double rotation=0;
-      double rotationNumerator=0;
-      double rotationDenominator=0;
-      One80overPi=180/PI;
+      real8 north=0.0;//initialize values...
+      real8 south=0.0;
+      real8 east=0.0;
+      real8 west=0.0;
+      double rotation=0.0;
+      double rotationNumerator=0.0;
+      double rotationDenominator=0.0;
+      One80overPi=180.0/PI;
       char pngFilename[4*ONE27]; 
       strcpy(pngFilename, filename);
       strcat(pngFilename,".png");
@@ -1934,7 +2219,7 @@ void write_kml(
       cornerLam*=One80overPi;
       DEBUG << "philamhei(l0,pN)= " << cornerPhi << ", " << cornerLam << ", " << cornerHei;
       DEBUG.print();
-      north+=cornerPhi;north/=2;	//north=[ phi(l0,p0)+phi(l0,pN) ]/2
+      north+=cornerPhi;north/=2.0;	//north=[ phi(l0,p0)+phi(l0,pN) ]/2
       east+=cornerLam;
       	//corner 3 (lN,p0)
       lp2ell(input_dbow.linehi, input_dbow.pixlo, input_ellips, master, masterorbit, cornerPhi, cornerLam, cornerHei, 10, 1e-3);
@@ -1943,7 +2228,7 @@ void write_kml(
       DEBUG << "philamhei(lN,p0)= " << cornerPhi << ", " << cornerLam << ", " << cornerHei;
       DEBUG.print();
       south+=cornerPhi;
-      west+=cornerLam;west/=2;		//west= [ lam(l0,pN)+lam(lN,pN) ]/2
+      west+=cornerLam;west/=2.0;		//west= [ lam(l0,pN)+lam(lN,pN) ]/2
       rotationNumerator-=cornerPhi;
       rotationDenominator-=cornerLam;
       	//corner 4 (lN,pN)
@@ -1952,8 +2237,8 @@ void write_kml(
       cornerLam*=One80overPi;
       DEBUG << "philamhei(lN,pN)= " << cornerPhi << ", " << cornerLam << ", " << cornerHei;
       DEBUG.print();
-      south+=cornerPhi;south/=2;	//south=[ phi(lN,p0)+phi(lN,pN) ]/2
-      east+=cornerLam;east/=2;		//east= [ lam(l0,p0)+lam(lN,p0) ]/2
+      south+=cornerPhi;south/=2.0;	//south=[ phi(lN,p0)+phi(lN,pN) ]/2
+      east+=cornerLam;east/=2.0;		//east= [ lam(l0,p0)+lam(lN,p0) ]/2
             
       DEBUG << "GoogleEarth North/South/East/West: " << north << " / " << south << " / " << east << " / " << west;
       DEBUG.print();
@@ -1961,6 +2246,13 @@ void write_kml(
       rotation=-(90-atan2(rotationNumerator, rotationDenominator)*One80overPi);
       DEBUG << "GoogleEarth Rotation: " << rotation;
       DEBUG.print();
+
+      // Re-rotate (because user will flip figures) [RN]
+      if (north<south){std::swap(north, south);}
+      if (east<west){std::swap(east, west);}
+      if (rotation>90){rotation-=180;}
+      if (rotation<-90){rotation+=180;}
+
       // Write output KML. 
 	//open output file
 	ofstream kmlfile;

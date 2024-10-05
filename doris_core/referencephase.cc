@@ -91,7 +91,7 @@ void flatearth(
         orbit                  &slaveorbit)
   {
   TRACE_FUNCTION("flatearth (BK 26-Oct-1999)")
-  const int32 MAXITER   = 10;
+  const int32 MAXITER   = 100; // [RM] increased from 10 to 100 for ScanSAR
   const real8 CRITERPOS = 1e-6;
   const real8 CRITERTIM = 1e-10;
   char                  dummyline[2*ONE27];
@@ -922,8 +922,8 @@ void demassist(
   lp2xyz(verylastline,lastpixel,ellips,master,masterorbit,
            P4,MAXITER,CRITERPOS);
 
-  const real8 r_spacing  = ( (P1.min(P2)).norm() + (P3.min(P4)).norm() ) / 2 /(lastpixel - firstpixel) ;
-  const real8 az_spacing = ( (P1.min(P3)).norm() + (P2.min(P4)).norm() ) /2 /(verylastline - veryfirstline); 
+  const real8 r_spacing  = ( (P1.min(P2)).norm() + (P3.min(P4)).norm() ) / 2.0 /(lastpixel - firstpixel) ;
+  const real8 az_spacing = ( (P1.min(P3)).norm() + (P2.min(P4)).norm() ) /2.0 /(verylastline - veryfirstline); 
   const real8 r_az_ratio = r_spacing/az_spacing;
 
   INFO << "Master azimuth spacing: " << az_spacing;
@@ -1622,6 +1622,10 @@ void radarcodedem(
   ofstream demrefphaseoutfile("crd_dem_refphase.temp", ios::out | ios::trunc); 
   bk_assert(demrefphaseoutfile,"crd_dem_refphase.temp",__FILE__,__LINE__);
 
+  // ref incidence angle in DEM geometry
+  ofstream incangtmp("crd_incang.temp", ios::out | ios::trunc); 
+  bk_assert(incangtmp,"crd_incang.temp",__FILE__,__LINE__);
+
   // h2ph factor in DEM geometry
   ofstream demh2phoutfile; 
   if (outputh2ph==true)
@@ -1753,6 +1757,7 @@ void radarcodedem(
     matrix<real8> masterDEMpixel(DEM.lines(),DEM.pixels());
     matrix<real8> ref_phase_array(DEM.lines(),DEM.pixels());
     matrix<real8> h2ph_array(DEM.lines(),DEM.pixels());
+    matrix<real8> incangle(DEM.lines(),DEM.pixels());
 
     // --- Loop DEM ---
     cn P;
@@ -1833,7 +1838,9 @@ void radarcodedem(
       }
           
         ref_phase_array(i,j) = ref_phase;
-
+        cn Psat_masterinc = masterorbit.getxyz(t_azi_master);
+        cn r3 = Psat_masterinc.min(P);
+        incangle(i,j) = P.angle(r3);            // incidence angle
         lambda += DEMdeltalon;
         } // loop DEM pixels
 
@@ -1850,20 +1857,23 @@ void radarcodedem(
     masterdemlineoutfile << masterDEMline;
     masterdempixeloutfile << masterDEMpixel;
     demrefphaseoutfile << ref_phase_array;
+    incangtmp << incangle;
 if (outputh2ph==true)
   demh2phoutfile << h2ph_array;
 
     masterDEMline.resize(1,1); //deallocate
     masterDEMpixel.resize(1,1); //deallocate
     DEM.resize(1,1); //deallocate
-    ref_phase_array(1,1); //deallocate
-    h2ph_array(1,1); //deallocate
+    ref_phase_array.resize(1,1); //deallocate
+    h2ph_array.resize(1,1); //deallocate
+    incangle.resize(1,1); //deallocate
     } // buffer loop
 
   demofile.close();
   masterdemlineoutfile.close();
   masterdempixeloutfile.close();
   demrefphaseoutfile.close();
+  incangtmp.close();
 if (outputh2ph==true)
   demh2phoutfile.close();
 
@@ -1913,8 +1923,8 @@ if (outputh2ph==true)
   lp2xyz(verylastline,lastpixel,ellips,master,masterorbit,
            P4,MAXITER,CRITERPOS);
 
-  const real8 r_spacing  = ( (P1.min(P2)).norm() + (P3.min(P4)).norm() ) / 2 /(lastpixel - firstpixel) ;
-  const real8 az_spacing = ( (P1.min(P3)).norm() + (P2.min(P4)).norm() ) /2 /(verylastline - veryfirstline); 
+  const real8 r_spacing  = ( (P1.min(P2)).norm() + (P3.min(P4)).norm() ) / 2.0 /(lastpixel - firstpixel) ;
+  const real8 az_spacing = ( (P1.min(P3)).norm() + (P2.min(P4)).norm() ) /2.0 /(verylastline - veryfirstline); 
   const real8 r_az_ratio = r_spacing/az_spacing;
 
   INFO << "Interferogram azimuth spacing: " << az_spacing;
@@ -1999,6 +2009,10 @@ INFO.print();
     openfstream(h2phofile,refdeminput.foh2ph,generalinput.overwrit);
     bk_assert(h2phofile,refdeminput.foh2ph,__FILE__,__LINE__);
     }
+  
+  ofstream incangfile; // incidence angle file
+  openfstream(incangfile,"incangle.raw",generalinput.overwrit);
+  bk_assert(incangfile,"incangle.raw",__FILE__,__LINE__);
 
   // ______ interpolation loop per buffer ______
   for (register int32 buffer = 0; buffer < numfullbuffers + extrabuffer; ++buffer)
@@ -2044,7 +2058,7 @@ INFO.print();
     readfile(DEMpixel_buffer,"crd_m_dempixel.temp",NrowsDEM,winfromfile,zerooffset);
     
     // read z (multiple, number can easily be increased, e.g. simulated intensity)
-    int32 Nz = 1; //number of z
+    int32 Nz = 2; //number of z
     matrix<real8> input_buffer(NrowsDEM_buffer *Nz ,NcolsDEM_buffer);
     matrix<real8> temp_input_buffer(NrowsDEM_buffer,NcolsDEM_buffer);
     if (outputrefdemhei==true)
@@ -2079,8 +2093,11 @@ INFO.print();
         input_buffer.setdata(NrowsDEM_buffer * (Nz-1) , 0, temp_input_buffer);
       }
     
+    readfile(temp_input_buffer,"crd_incang.temp",NrowsDEM,winfromfile,zerooffset);
+    input_buffer.setdata(NrowsDEM_buffer * Nz , 0, temp_input_buffer); // incidence angle will be last
+    
     // initialize output array
-    Nz = 1;  
+    Nz = 2;  
     matrix<real8> output_buffer(blines * Nz, Npixelsml);
 
     if (outputrefdemhei==true)
@@ -2150,6 +2167,12 @@ INFO.print();
                              : h2phofile  << output_layer;
         //h2phofile << output_buffer(window((Nz-1) * blines,Nz * blines - 1, 0, Npixelsml -1 ));
       }
+
+    for (register int32 i = blines * (Nz) ; i < blines * (Nz+1)  ; i++)
+      for(register int32 j = 0; j < Npixelsml; j++)
+        output_layer(i-(blines * (Nz)),j) = real4(output_buffer(i,j)); // real8 --> real4
+    (mlookedIFG == true) ? incangfile << multilook(output_layer, ifgmlL, ifgmlP)  // [RN]
+                         : incangfile << output_layer ;
     
     DEMline_buffer.resize(1,1);           // deallocate
     DEMpixel_buffer.resize(1,1);
@@ -2170,6 +2193,8 @@ INFO.print();
     refdemheiofile.close();
   if (outputh2ph==true)
     h2phofile.close();
+  
+  incangfile.close(); // [RN] close incidence angle file
 
   //===================================================================
   //============ End second loop: interpolation           =============
@@ -2384,25 +2409,25 @@ void getcorners(
   real8 height;  
   lp2ell(l0,p0,
          ellips, master, masterorbit,
-         phi, lambda, height);          // returned
+         phi, lambda, height, 10, 1e-6);          // returned
   real8 phil0p0    = phi;
   real8 lambdal0p0 = lambda;
 
   lp2ell(lN,p0,
          ellips, master, masterorbit,
-         phi, lambda, height);          // returned
+         phi, lambda, height, 10, 1e-6);          // returned
   real8 philNp0    = phi;
   real8 lambdalNp0 = lambda;
 
   lp2ell(lN,pN,
          ellips, master, masterorbit,
-         phi, lambda, height);          // returned
+         phi, lambda, height, 10, 1e-6);          // returned
   real8 philNpN    = phi;
   real8 lambdalNpN = lambda;
 
   lp2ell(l0,pN,
          ellips, master, masterorbit,
-         phi, lambda, height);          // returned
+         phi, lambda, height, 10, 1e-6);          // returned
   real8 phil0pN    = phi;
   real8 lambdal0pN = lambda;
 

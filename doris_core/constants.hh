@@ -256,6 +256,12 @@ const int16     SLC_RSAT    = 3;                // RadarSAT (and Atlantis proces
 const int16     SLC_JERS    = 4;                // JERS (ceos?)
 // for ALOS: [PM]
 const int16     SLC_ALOS     = 5;               // ALOS (ceos)   //  [MA] TODO what about different polarizations: single 5 --> 51; dual == 52 etc.
+const int16     SLC_ALOS2    = 521;             // ALOS2 (ceos)   //  [RN] 521: ALOS2 strip single pol.
+const int16     SLC_ALOS2SP  = 524;             // ALOS2 (ceos)   //  [RN] 524: ALOS2 Spotlight mode: NOT IMPLIMENTED
+const int16     SLC_ALOS2SCB = 526;             // ALOS2 (ceos)   //  [RN] 526: ALOS2 ScanSAR Burst mode SAR data: NOT IMPLIMENTED
+const int16     SLC_ALOS4    = 551;             // ALOS2 (ceos)   //  [RN] 551: ALOS4 strip single pol.
+const int16     SLC_ASNARO2  = 531;             // ASNARO2 (ceos)   //[RN] 531: ASNARO2 strip single pol. (X-band SAR)
+const int16     SLC_Strix  = 541;             // Strix-series (ceos)   //[RN] 541: Strix series (Synspective) strip single pol. (X-band SAR)
 const int16     SLC_TSX      = 6;               // TSX stripmap
 // for Radarsat-2: [MA]
 const int16     SLC_RS2      = 70;              // RS2 [Default for Radarsat-2 SLC]  [MA]

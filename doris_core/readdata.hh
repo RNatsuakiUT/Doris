@@ -106,6 +106,7 @@ void  OversampleSLC(
        const input_gen        &generalinput,
        const slcimage         &imageinfo,
        const input_oversample &oversampleinput,
-       const int16            fileid);
+       const int16            fileid,
+       const real8            prfratio);
 
 #endif // READDATA_H

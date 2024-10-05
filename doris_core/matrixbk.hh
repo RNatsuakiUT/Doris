@@ -166,6 +166,8 @@ void matassert(
                                  uint frow, uint fcol);
   matrix<real4>   oversample    (const matrix<real4>   &A,
                                  uint frow, uint fcol);
+  matrix<complr4> downsample    (const matrix<complr4> &A,// new 8/05: by ref.
+                                 uint frow, uint fcol);
 
 // ______ LAPACK_LIBRARY ______
 // ______ Without LAPACK, internal routines can be used (slower, inaccurate?) ______
@@ -179,6 +181,7 @@ void matassert(
 
   matrix<real4>   intensity     (const matrix<complr4> &A);
   matrix<real4>   magnitude     (const matrix<complr4> &A);
+  matrix<real4>   logmagnitude  (const matrix<complr4> &A);
 
   matrix<real4>   real          (const matrix<complr4> &A);
   matrix<real4>   imag          (const matrix<complr4> &A);
@@ -347,6 +350,12 @@ template <class Type>
   real8         mean        (const matrix<Type> &A);
 template <class Type>
   matrix<Type>  sum         (const matrix<Type> &A, int32 dim);
+template <class Type>
+  matrix<Type>  matshift    (const matrix<Type> &A, int32 factorL, int32 factorP);
+template <class Type>
+  matrix<Type>  convflt     (const matrix<Type> &A, const matrix<Type> &B);
+template <class Type>
+  matrix<Type>  mklanczmsk  (const Type &R, real4 B, real4 C);
 //template <class Type>
 //  matrix<Type>  operator ^ (const matrix<Type>& A);
 //template <class Type>
@@ -650,7 +659,7 @@ friend void readfile(matrix<Type> &Result, const char *file,
   //INFO << "lines " << lines <<"  "  << pixels;
   //INFO.print();
   //const uint start  = ((win.linelo-1)*filepixels+win.pixlo-1)*sizepixel; [MA]
-  const uint64 start  = (uint64)((win.linelo-1)*filepixels+win.pixlo-1)*sizepixel; // both sides should have the same type to
+  const uint64 start  = (uint64)(((uint64)win.linelo-1)*((uint64)filepixels)+((uint64)win.pixlo)-1)*((uint64)sizepixel); // both sides should have the same type to
                                                                                   //  detect/eliminate integer overflow [MA]
 
   #ifdef __DEBUGMAT1
@@ -667,7 +676,7 @@ friend void readfile(matrix<Type> &Result, const char *file,
    // INFO << "read " << pixels*sizepixel<<endl;
    // INFO.print();
     
-    ifile.seekg(start+filepixels*lin*sizepixel,ios::beg);
+    ifile.seekg(start+((uint64)filepixels)*((uint64)lin)*((uint64)sizepixel),ios::beg);
     ifile.read((char*)&Result.data[lin][0],pixels*sizepixel);
     }
   ifile.close();

@@ -89,14 +89,15 @@ enum {
                 pr_i_subtrrefpha  ,     // 31  interferogram - refpha
                 pr_i_comprefdem   ,     // 32  ref.phase (flat earth)
                 pr_i_subtrrefdem  ,     // 33  interferogram - refpha
-                pr_i_filtphase    ,     // 34  filtering interferogram
-                pr_i_unwrap       ,     // 35  unwrapping interferogram
-                pr_i_estorbits    ,     // 36  estimate orbit error [HB]
-                pr_i_slant2h      ,     // 37  slant to height conversion
-                pr_i_geocoding    ,     // 38  geocoding
-                pr_i_dinsar       ,     // 39  3 pass differential
-                pr_i_EXTRA2       ,     // 40  for future use
-                pr_last_one             // 41  not used; to indicate last one (==NUMPROCESSES-1)
+                pr_i_sfsspec      ,     // 34  SFS-SPEC method [RN]
+                pr_i_filtphase    ,     // 35  filtering interferogram
+                pr_i_unwrap       ,     // 36  unwrapping interferogram
+                pr_i_estorbits    ,     // 37  estimate orbit error [HB]
+                pr_i_slant2h      ,     // 38  slant to height conversion
+                pr_i_geocoding    ,     // 39  geocoding
+                pr_i_dinsar       ,     // 40  3 pass differential
+                pr_i_EXTRA2       ,     // 41  for future use
+                pr_last_one             // 42  not used; to indicate last one (==NUMPROCESSES-1)
 };
 const int16     NUMPROCESSES      = pr_last_one+1;        // see above...
 //____RaffaeleNutricato END MODIFICATION SECTION 1
@@ -144,14 +145,15 @@ const char processcontrol[NUMPROCESSES][ONE27] = {
    "subtr_refphase:",       // 31 pr_i_subtrrefpha
    "comp_refdem:",          // 32 pr_i_comprefdem
    "subtr_refdem:",         // 33 pr_i_subtrrefdem
-   "filtphase:",            // 34 pr_i_filtphase
-   "unwrap:",               // 35 pr_i_unwrap
-   "est_orbits:",           // 36 pr_i_estorbits [HB
-   "slant2h:",              // 37 pr_i_slant2h
-   "geocoding:",            // 38 pr_i_geocoding
-   "dinsar:",               // 39 pr_i_EXTRA
-   "NOT_USED2:",            // 40 pr_i_EXTRA2
-   "ERROR update this!"};   // 41 pr_last_one
+   "SFS-SPEC",              // 34 pr_i_sfsspec [RN]
+   "filtphase:",            // 35 pr_i_filtphase
+   "unwrap:",               // 36 pr_i_unwrap
+   "est_orbits:",           // 37 pr_i_estorbits [HB]
+   "slant2h:",              // 38 pr_i_slant2h
+   "geocoding:",            // 39 pr_i_geocoding
+   "dinsar:",               // 40 pr_i_EXTRA
+   "NOT_USED2:",            // 41 pr_i_EXTRA2
+   "ERROR update this!"};   // 42 pr_last_one
 
 //  strcpy(processcontrol[pr_m_readfiles],"readfiles:");
 //  strcpy(processcontrol[pr_m_crop]     , "crop:");
@@ -414,7 +416,7 @@ struct input_fine                       // arguments for fine coreg.
   bool          plotoffsets;            // call script
   bool          plotmagbg;              // call script
   real4         plotthreshold;          // call script  
-  int32          shiftazi;               // [true] shift spectrum to 0
+  int32         shiftazi;               // [true] shift spectrum to 0 
   
   // * added by MCC
   //For cohernece method only 
@@ -513,7 +515,7 @@ struct input_resample                   // arguments for resampling slave
   int16         oformatflag;            // output format [cr4] ci16
   window        dbow_geo;               // cut out of original master.geo
   window        dbow;                   // cut out of original master.radar
-  int32          shiftazi;               // [1] center the spectrum around zero, if 0 do nothing if 2 deramp using Sentinel-1 params
+  int32         shiftazi;               // [1] center the spectrum around zero, if 0 do nothing if 2 deramp using Sentinel-1 params
   };
 
 
@@ -528,6 +530,7 @@ struct input_interfero                  // arguments for computation interferogr
                                         //  one is man (else no output)
   uint          multilookL;             // multilookfactor in line dir.
   uint          multilookP;             // multilookfactor in pixel dir.
+  uint          sfsmulti;               // multilookfactor for sfs-spec [RN]
   };
 
 
