@@ -116,6 +116,7 @@ const int REALPART  = 53;       // output real part
 const int IMAGPART  = 54;       // output imag part
 const int NORMAL    = 55;       // output as is
 const int MIXED     = 56;       // output sunraster/uc1 mag/pha overlay
+const int SPPLOT    = 57;       // output singular point (residue) plot[RN]
 // ______ should be -1||1 used in loops ______
 const int NOMIRROR  =  1;       // do no mirroring has to be  1 (used later)
 const int DOMIRROR  = -1;       // do mirroring has to be -1 (used later)
@@ -457,6 +458,25 @@ void functie(Type realpart, Type imagpart, const commandlineinput &input)
                       }
                     if (input.exponent==1.)
                       {
+                      meanmag  += (( input.realinput == false ) ? sqrt(float(realpart)*float(realpart)+
+                                                                 float(imagpart)*float(imagpart)) 
+                                                               : float(realpart))/numsamples;  // non-complex due usual mean
+                     }
+                    else
+                      meanmag  += (( input.realinput == false ) ? pow(sqrt(float(realpart)*float(realpart)+
+                                                                 float(imagpart)*float(imagpart)),
+                                                                 input.exponent)
+                                                               : pow(float(realpart),input.exponent))/numsamples;
+                    // --- assume NORMAL input, unwrapped phase ---
+                    if (realpart<min_input) min_input = realpart; 
+                    if (input.realinput == false && imagpart<min_input) min_input = imagpart;
+                    if (realpart>max_input) max_input = realpart;
+                    if (input.realinput == false && imagpart>max_input) max_input = imagpart;
+                  }
+              }
+            /*
+                    if (input.exponent==1.)
+                      {
                       meanmag  += ( input.realinput == false ) ? sqrt(float(realpart)*float(realpart)+
                                                                  float(imagpart)*float(imagpart)) 
                                                                : float(realpart);  // non-complex due usual mean
@@ -475,6 +495,7 @@ void functie(Type realpart, Type imagpart, const commandlineinput &input)
               }
             //meanmag = input.scale*meanmag/numsamples;// finally...
             meanmag = meanmag/numsamples;// finally...
+            */
             if (input.verbose==true || input.ignorenan)
               {
                 cerr << "mean " << stattag << " based on " << numsamples
@@ -537,6 +558,14 @@ void functie(Type realpart, Type imagpart, const commandlineinput &input)
     // ====== Read file, compute output, write to stdout ======
     // for (i=input.firstline; i<=input.lastline; i+=input.sublines)
     // ______ mirrorY in loop initialization ______
+    
+    // For SPPLOT let reading second line [RN]
+    Type  *LINE2; 	// second line for line integration
+    LINE2  = new Type[2*(input.lastpixel-input.firstpixel+1)];	// allocate memory
+    Type  *LINEML2;	// multilooked line
+    if (input.multilookL != 1)	// ie. >1
+    	LINEML2 = new Type[2*(input.lastpixel-input.firstpixel+1)];    // allocate memory
+    
     for (i=starti; i*input.mirrorY<=stopi; i+=plusi)    // forwards or backwards
       {
         if (giveprogress==true)
@@ -628,13 +657,97 @@ void functie(Type realpart, Type imagpart, const commandlineinput &input)
               LINE[pix] += LINEML[pix]; // add real and imag part
             }
         }
-      
+
+  	if (input.dooutput==SPPLOT && i*input.mirrorY<stopi) //[RN]
+  	{
+      	// ______ start is just before line i to be read ______
+      	start  = input.bytesperline*(i) + (input.firstpixel-1)*input.bytesperpixel;
+      	start += input.headerlength;// account for header.
+      	inf.seekg(start,ios::beg);
+      	inf.read((char*)&LINE2[0],(input.lastpixel-input.firstpixel+1)*input.bytesperpixel);
+      	// ______ Swap bytes if -B option specified ______
+      	if (input.dontohx==true)
+      	{
+      		if (sizeof(Type)==sizeof(short))
+      		{
+      			for (k=0; k<2*(input.lastpixel-input.firstpixel+1); ++k)
+      			{
+      				LINE2[k] = ntohs(short(LINE2[k]));
+      			}
+      		}
+      		else if (sizeof(Type)==sizeof(int))
+      		{
+      			for (k=0; k<2*(input.lastpixel-input.firstpixel+1); ++k)
+      			{
+      				LINE2[k] = ntohl(short(LINE2[k]));
+      			}
+      		}
+      		else
+      			cerr << "seems wrong, -B and not 2B/4B type, ignoring.\n";
+      	}
+      	if (input.dohtonx==true)
+      	{
+      		if (sizeof(Type)==sizeof(short))
+      		{
+      			for (k=0; k<2*(input.lastpixel-input.firstpixel+1); ++k)
+      			{
+      				LINE2[k] = htons(short(LINE2[k]));
+      			}
+      		}
+      		else if (sizeof(Type)==sizeof(int))
+      		{
+      			for (k=0; k<2*(input.lastpixel-input.firstpixel+1); ++k)
+      			{
+      				LINE2[k] = htonl(short(LINE2[k]));
+      			}
+      		}
+      		else
+      			cerr << "seems wrong, -B and not type 2B/4B, ignoring.\n";
+      	}
+      	// ______ Do multilooking in line direction here ______
+      	for (int mll=1; mll<input.multilookL; ++mll)
+      	{
+      		// ______ Read next/previous line and add it to LINE ______
+      		start  = input.bytesperline*(i+(mll*input.mirrorY)) +
+      				(input.firstpixel-1)*input.bytesperpixel;
+      		start += input.headerlength;// account for header.
+      		inf.seekg(start,ios::beg);
+      		inf.read((char*)&LINEML2[0],
+      				(input.lastpixel-input.firstpixel+1)*input.bytesperpixel);
+      		for (int pix=0; pix<2*(input.lastpixel-input.firstpixel+1); ++pix)
+      		{
+      			// ______ Swap bytes if -B option specified ______
+      			if (input.dontohx==true)
+      			{
+      				if (sizeof(Type)==sizeof(short))
+      					LINEML2[pix] = ntohs(short(LINEML2[pix]));
+      				else if (sizeof(Type)==sizeof(int))
+      					LINEML2[pix] = ntohl(short(LINEML2[pix]));
+      			}
+      			if (input.dohtonx==true)
+      			{
+      				if (sizeof(Type)==sizeof(short))
+      					LINEML2[pix] = htons(short(LINEML2[pix]));
+      				else if (sizeof(Type)==sizeof(int))
+      					LINEML2[pix] = htonl(short(LINEML2[pix]));
+      			}
+      			// ______ Finally multilook ______
+      			LINE2[pix] += LINEML2[pix];	// add real and imag part
+      		}
+      	}
+  	}
       // ______ Compute output, store in array OUTPUT ______
       // ______ multilook here in X (range) direction ______
       // ______ store in LINE[j,x,x,j,x,x,j,..]; j are multilooked values ______
       register int indexoutput = 0;                     // j is input index
       double dbl_real;// for normlaization with numlooks
       double dbl_imag;
+  	  double dbl_real10; // for SPPLOT [RN]
+  	  double dbl_imag10; // for SPPLOT [RN]
+  	  double dbl_real01; // for SPPLOT [RN]
+  	  double dbl_imag01; // for SPPLOT [RN]
+  	  double dbl_real11; // for SPPLOT [RN]
+  	  double dbl_imag11; // for SPPLOT [RN]
       switch (input.dooutput)
         {
         case MAGNITUDE:
@@ -686,6 +799,93 @@ void functie(Type realpart, Type imagpart, const commandlineinput &input)
             indexoutput++;
           }
         break; // case
+  	case SPPLOT: //[RN] 
+  		if (i*input.mirrorY<stopi)
+  		{
+      		for (j=startj; j*input.mirrorX<stopj; j+=plusj)  // forwards or backwards
+      		{
+      			realindex = 2*(j-input.firstpixel); 	// calculate 00
+      			realpart  = LINE[realindex];
+      			imagpart  = LINE[realindex+1];
+      			// ______ Multilook in X direction ______
+      			for (int mlp=1; mlp<input.multilookP; ++mlp)	// number of ml pixels
+      			{
+      				realpart += LINE[realindex+  2*(mlp*input.mirrorX)];
+      				imagpart += LINE[realindex+1+2*(mlp*input.mirrorX)];
+      			}
+      			dbl_real = double(realpart) / numlooks;
+      			dbl_imag = double(imagpart) / numlooks;
+      			realindex = 2*(j+plusj-input.firstpixel); // calculate 01
+      			realpart  = LINE[realindex];
+      			imagpart  = LINE[realindex+1];
+      			// ______ Multilook in X direction ______
+      			for (int mlp=1; mlp<input.multilookP; ++mlp)
+      			{
+      				realpart += LINE[realindex+  2*(mlp*input.mirrorX)];
+      				imagpart += LINE[realindex+1+2*(mlp*input.mirrorX)];
+      			}
+      			dbl_real01 = double(realpart) / numlooks;
+      			dbl_imag01 = double(imagpart) / numlooks;
+      			realindex = 2*(j-input.firstpixel); // calculate 10
+      			realpart  = LINE2[realindex];
+      			imagpart  = LINE2[realindex+1];
+      			// ______ Multilook in X direction ______
+      			for (int mlp=1; mlp<input.multilookP; ++mlp)	// number of ml pixels
+      			{
+      				realpart += LINE2[realindex+  2*(mlp*input.mirrorX)];
+      				imagpart += LINE2[realindex+1+2*(mlp*input.mirrorX)];
+      			}
+      			dbl_real10 = double(realpart) / numlooks;
+      			dbl_imag10 = double(imagpart) / numlooks;
+      			realindex = 2*(j+plusj-input.firstpixel); // calculate 11
+      			realpart  = LINE2[realindex];
+      			imagpart  = LINE2[realindex+1];
+      			// ______ Multilook in X direction ______
+      			for (int mlp=1; mlp<input.multilookP; ++mlp)	// number of ml pixels
+      			{
+      				realpart += LINE2[realindex+  2*(mlp*input.mirrorX)];
+      				imagpart += LINE2[realindex+1+2*(mlp*input.mirrorX)];
+      			}
+      			dbl_real11 = double(realpart) / numlooks;
+      			dbl_imag11 = double(imagpart) / numlooks;
+      			// calculate if SP or not
+      			float resnum0 = atan2(float(dbl_imag),float(dbl_real))-atan2(float(dbl_imag01),float(dbl_real01));
+      			if (resnum0>PI)
+      				resnum0-=2*PI;
+      			else if (resnum0<-PI)
+      				resnum0+=2*PI;
+      			float resnum1 = atan2(float(dbl_imag01),float(dbl_real01))-atan2(float(dbl_imag11),float(dbl_real11));
+      			if (resnum1>PI)
+      				resnum1-=2*PI;
+      			else if (resnum1<-PI)
+      				resnum1+=2*PI;
+      			float resnum2 = atan2(float(dbl_imag11),float(dbl_real11))-atan2(float(dbl_imag10),float(dbl_real10));
+      			if (resnum2>PI)
+      				resnum2-=2*PI;
+      			else if (resnum2<-PI)
+      				resnum2+=2*PI;
+      			float resnum3 = atan2(float(dbl_imag10),float(dbl_real10))-atan2(float(dbl_imag),float(dbl_real));
+      			if (resnum3>PI)
+      				resnum3-=2*PI;
+      			else if (resnum3<-PI)
+      				resnum3+=2*PI;
+      			OUTPUT[indexoutput] = (input.exponent==1.) ?
+      					input.scale * (resnum0+resnum1+resnum2+resnum3) :
+      					input.scale * pow((resnum0+resnum1+resnum2+resnum3), input.exponent);
+      			indexoutput++;
+      		}
+				OUTPUT[indexoutput]=0; // cannot find SP in last pixel
+  			indexoutput++;
+  		}
+  		else
+  		{
+  			for (j=startj; j*input.mirrorX<=stopj; j+=plusj)  // cannot find SP in last line
+  			{
+  				OUTPUT[indexoutput]=0;
+      			indexoutput++;
+  			}
+  		}
+  		break; // case
         
         case MIXED:
           // ______ OUTPUT[0:numoutput-1] for MAG ______
@@ -871,6 +1071,23 @@ void functie(Type realpart, Type imagpart, const commandlineinput &input)
                 }
               }
             break;
+  		case SPPLOT: // [RN]
+  			rescale(OUT_UC,OUTPUT,numoutput,-2*PI,2*PI,0,255);	    // fill uc
+  			// ______ Add scalebar if requested ______
+  			// ______ by changing the data in lower right corner ______
+  			if (input.scalebar)
+  			{
+  				if (outputlinecnt>=line0scalebar && outputlinecnt<=lineNscalebar)
+  				{
+  					// ______ change the data to [0:255] ______
+  					for (int ii=pixel0scalebar; ii<=pixel0scalebar+scalebarwidth; ++ii)
+  					{
+  						OUT_UC[ii]= uchar(float(ii-pixel0scalebar)*
+  								(255./float(scalebarwidth)));
+  					}
+  				}
+  			}
+  			break;
           case MAGNITUDE:
             {
             // ______ First convert output to float 16:255, ______
@@ -1695,6 +1912,8 @@ static struct option const long_options[] =
           input.dooutput = NORMAL;
         else if (!strcmp(optarg,"mixed"))
           input.dooutput = MIXED;
+    	else if (!strcmp(optarg,"sp"))
+    	  input.dooutput = SPPLOT;
         else
           {
           cerr << argv[0] << ": ERROR: -q mag|phase|real|imag|normal|mixed: ~= "
@@ -1854,7 +2073,7 @@ static struct option const long_options[] =
   // filename: last argument
   // cerr << "OPTARG: " << argv[argc-1] << endl;
   // cerr << "OPTARG: " << argv[optind] << endl;
-  if (argv[optind]=='\0')
+  if (argv[optind]=="\0")
     {
     cerr << argv[0] << ": ERROR: No input file specified.\n";
     return false;
@@ -1994,7 +2213,7 @@ static struct option const long_options[] =
 
 
   // ______ give tip ______
-  if (input.oformat==FORMATUC1 && input.dooutput==PHASE)
+  if (input.oformat==FORMATUC1 && (input.dooutput==PHASE || input.dooutput==SPPLOT))
     cerr << argv[0] 
     << ": TIP: display with (ImageMagick, FILE is redirected file):\ndisplay -size "
     << input.linelength << "x" << input.numlines << " gray:FILE\n";
