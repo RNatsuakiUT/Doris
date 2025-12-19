@@ -121,4 +121,5 @@ doris_users@tudelft.nl
 
 ==========
 Contributions for
-1. Applied for ALOS series and StryX series
+1. Applied for ALOS series (ALOS, ALOS-2, ALOS-4) and StryX series.
+USE ALOS, ALOS2, ALOS4 and STRYX to indicate.
