@@ -1,21 +1,21 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os,sys,time
 
 def usage():
-    print '\nUsage: python tsx_dump_data.py tsx_COSAR_product outputfile [l0 lN p0 pN] -res RESFILE'
-    print '  where tsx_COSAR_product is the input filename'
-    print '        outputfile        is the output filename'
-    print '        l0                is the first azimuth line (starting at 1)'
-    print '        lN                is the last azimuth line'
-    print '        p0                is the first range pixel (starting at 1)'
-    print '        pN                is the last range pixel'
-    print '        RESFILE           DORIS result file that is to be updated for crop metadata'
+    print('\nUsage: python tsx_dump_data.py tsx_COSAR_product outputfile [l0 lN p0 pN] -res RESFILE')
+    print('  where tsx_COSAR_product is the input filename')
+    print('        outputfile        is the output filename')
+    print('        l0                is the first azimuth line (starting at 1)')
+    print('        lN                is the last azimuth line')
+    print('        p0                is the first range pixel (starting at 1)')
+    print('        pN                is the last range pixel')
+    print('        RESFILE           DORIS result file that is to be updated for crop metadata')
 
 try:
     inputFileName  = sys.argv[1]; 
     outputFileName = sys.argv[2]
 except:
-    print 'Unrecognized input'
+    print('Unrecognized input')
     usage()
     sys.exit(1)
 
@@ -43,7 +43,7 @@ elif len(sys.argv) > 3 and len(sys.argv) < 9:
     outputWinFirstPix  = int(sys.argv[5])-1    # gdal srcwin starting at 0
     outputWinLastPix   = int(sys.argv[6])      # Lastpix  --> yoff  (later)
 elif len(sys.argv) > 3 and len(sys.argv) < 7:
-    print 'Unrecognized input'
+    print('Unrecognized input')
     usage()
     sys.exit(1)
 else:
@@ -67,7 +67,7 @@ if outputWinFirstPix is not None:
 
 failure = os.system(cmd)
 if failure:
-    print '%s: running %s failed' % (sys.argv[0],cmd)
+    print('%s: running %s failed' % (sys.argv[0],cmd))
     sys.exit(1)
 else:
     os.rename(os.path.splitext(outputFileName)[0]+'.j00',outputFileName)
@@ -76,7 +76,7 @@ else:
 # check whether the file exist!!!
 if resFile is not None:
 
-    print resFile
+    print(resFile)
 
     # load header
     headerFileStream = open(os.path.splitext(outputFileName)[0]+'.hdr','r')

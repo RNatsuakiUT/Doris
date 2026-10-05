@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 #-----------------------------------------------------------------#
 # A python code for parsing RS2 XML file into python data structures
@@ -30,20 +30,20 @@ from datetime import datetime
 codeRevision=1.2   # this code revision number
 
 def usage():
-    print 'INFO    : @(#)Doris InSAR software, $Revision: %s $, $Author: TUDelft $' % codeRevision
-    print
-    print 'Usage   : python rs2_dump_header2doris.py rs2_XML_product > outputfile'
-    print '                           where rs2_XML_product is the input filename'
-    print
-    print '          This software is part of Doris InSAR software package.\n'
-    print '(c) 1999-2010 Delft University of Technology, the Netherlands.\n'
+    print('INFO    : @(#)Doris InSAR software, $Revision: %s $, $Author: TUDelft $' % codeRevision)
+    print()
+    print('Usage   : python rs2_dump_header2doris.py rs2_XML_product > outputfile')
+    print('                           where rs2_XML_product is the input filename')
+    print()
+    print('          This software is part of Doris InSAR software package.\n')
+    print('(c) 1999-2010 Delft University of Technology, the Netherlands.\n')
 
 try:
     inputFileName  = sys.argv[1]
 #    outputFileName = sys.argv[2]
 #    outStream      = open(outputFileName,'w')
 except:
-    print '\nError   : Unrecognized input or missing arguments\n\n'
+    print('\nError   : Unrecognized input or missing arguments\n\n')
     usage()
     sys.exit(1)
 
@@ -145,7 +145,7 @@ queryList = {
 
 # get variables and parameters from xml
 container = {}
-for key, value in queryList.iteritems():
+for key, value in queryList.items():
     if key.startswith('list_'):
         container[key] = [tag.text for tag in inTree.findall(nsmap_none(value, ns))]
     else:
@@ -189,72 +189,72 @@ if container['sceneBeam'] != 'S3': # Hacky fix for S3 merged images
 
 dummyVar = 'DUMMY'
 
-print('\nrs2_dump_header2doris.py v%s, doris software, 2013\n' % codeRevision)
+print(('\nrs2_dump_header2doris.py v%s, doris software, 2013\n' % codeRevision))
 print('*******************************************************************')
 print('*_Start_readfiles:')
 print('*******************************************************************')
-print('Volume file: 					%s' % 'product.xml') # container['volFile']) # HARDCODED!!! for Radarsat-2
-print('Volume_ID: 					%s' % container['volID'])
-print('Volume_identifier: 				%s' % container['volRef'])
-print('Volume_set_identifier: 				%s' % dummyVar)
-print('(Check)Number of records in ref. file: 		%s' % container['sceneRecords'])
-print('SAR_PROCESSOR:                                  %s %s' % (str.split(container['productSpec'])[0][:2],container['productSoftVer']))
-print('SWATH:                                          %s' % container['sceneBeam'])
-print('PASS:                                           %s' % container['orbitDir'])
-print('IMAGING_MODE:                                   %s %s' % (container['sceneBeamMode'],container['scenePol']))
-print('RADAR_FREQUENCY (Hz):                           %s' % container['radarfreq'])
+print(('Volume file: 					%s' % 'product.xml')) # container['volFile']) # HARDCODED!!! for Radarsat-2
+print(('Volume_ID: 					%s' % container['volID']))
+print(('Volume_identifier: 				%s' % container['volRef']))
+print(('Volume_set_identifier: 				%s' % dummyVar))
+print(('(Check)Number of records in ref. file: 		%s' % container['sceneRecords']))
+print(('SAR_PROCESSOR:                                  %s %s' % (str.split(container['productSpec'])[0][:2],container['productSoftVer'])))
+print(('SWATH:                                          %s' % container['sceneBeam']))
+print(('PASS:                                           %s' % container['orbitDir']))
+print(('IMAGING_MODE:                                   %s %s' % (container['sceneBeamMode'],container['scenePol'])))
+print(('RADAR_FREQUENCY (Hz):                           %s' % container['radarfreq']))
 print('')
-print('Product type specifier: 	                %s' % container['mission'])
-print('Logical volume generating facility: 		%s' % container['productFacility'])
-print('Logical volume creation date: 			%s' % container['productVolDate'])
-print('Location and date/time of product creation: 	%s' % container['productDate'])
+print(('Product type specifier: 	                %s' % container['mission']))
+print(('Logical volume generating facility: 		%s' % container['productFacility']))
+print(('Logical volume creation date: 			%s' % container['productVolDate']))
+print(('Location and date/time of product creation: 	%s' % container['productDate']))
 #print('Scene identification: 				Orbit: %s %s Mode: %s' % (container['orbitABS'].split('_')[0],container['orbitDir'],container['sceneBeamMode']))
-print('Scene identification: 				Orbit: %s  %s' % (container['orbitABS'].split('_')[0], azimuthTimeStart.strftime(dateformat)))
-print('Scene location: 		                lat: %.4f lon: %.4f' % (float(container['sceneCenLat']),float(container['sceneCenLon'])))
+print(('Scene identification: 				Orbit: %s  %s' % (container['orbitABS'].split('_')[0], azimuthTimeStart.strftime(dateformat))))
+print(('Scene location: 		                lat: %.4f lon: %.4f' % (float(container['sceneCenLat']),float(container['sceneCenLon']))))
 print('')
-print('Leader file:                                 	%s' % 'product.xml') # container['volFile']) # HARDCODED!!! for Radarsat-2
-print('Sensor platform mission identifer:         	%s' % container['mission'])
-print('Scene_centre_latitude:                     	%s' % container['sceneCenLat'])
-print('Scene_centre_longitude:                    	%s' % container['sceneCenLon'])
-print('Scene_centre_heading:                            %s' % 'Null') # needs to be computed from geoinfo
-print('Radar_wavelength (m):                      	%s' % str(SOL/float(container['radarfreq'])))
-print('First_pixel_azimuth_time (UTC):			%s' % azimuthTimeStart.strftime('%d-%b-%Y %H:%M:%S.%f'))
-print('Pulse_Repetition_Frequency (computed, Hz): 	%s' % container['azimuthPRF'])
-print('Total_azimuth_band_width (Hz):             	%s' % float(container['azimuthBW']))
-print('Weighting_azimuth:                         	%s %f' % (str.upper(container['azimuthWind']), float(container['azimuthWindCoeff'])))
-print('Xtrack_f_DC_constant (Hz, early edge):     	%s' % container['dopplerCoeff'][0])
-print('Xtrack_f_DC_linear (Hz/s, early edge):     	%s' % container['dopplerCoeff'][1])
-print('Xtrack_f_DC_quadratic (Hz/s/s, early edge): 	%s' % container['dopplerCoeff'][2])
-print('Range_time_to_first_pixel (2way) (ms):     	%0.15f' % (float(container['rangeTimePix'])*1000))
-print('Range_sampling_rate (computed, MHz):       	%0.6f' % (float(container['rangeRSR'])/1000000))
-print('Total_range_band_width (MHz):               	%s' % (float(container['rangeBW'])/1000000))
-print('Weighting_range:                            	%s %f' % (str.upper(container['rangeWind']), float(container['rangeWindCoeff'])))
+print(('Leader file:                                 	%s' % 'product.xml')) # container['volFile']) # HARDCODED!!! for Radarsat-2
+print(('Sensor platform mission identifer:         	%s' % container['mission']))
+print(('Scene_centre_latitude:                     	%s' % container['sceneCenLat']))
+print(('Scene_centre_longitude:                    	%s' % container['sceneCenLon']))
+print(('Scene_centre_heading:                            %s' % 'Null')) # needs to be computed from geoinfo
+print(('Radar_wavelength (m):                      	%s' % str(SOL/float(container['radarfreq']))))
+print(('First_pixel_azimuth_time (UTC):			%s' % azimuthTimeStart.strftime('%d-%b-%Y %H:%M:%S.%f')))
+print(('Pulse_Repetition_Frequency (computed, Hz): 	%s' % container['azimuthPRF']))
+print(('Total_azimuth_band_width (Hz):             	%s' % float(container['azimuthBW'])))
+print(('Weighting_azimuth:                         	%s %f' % (str.upper(container['azimuthWind']), float(container['azimuthWindCoeff']))))
+print(('Xtrack_f_DC_constant (Hz, early edge):     	%s' % container['dopplerCoeff'][0]))
+print(('Xtrack_f_DC_linear (Hz/s, early edge):     	%s' % container['dopplerCoeff'][1]))
+print(('Xtrack_f_DC_quadratic (Hz/s/s, early edge): 	%s' % container['dopplerCoeff'][2]))
+print(('Range_time_to_first_pixel (2way) (ms):     	%0.15f' % (float(container['rangeTimePix'])*1000)))
+print(('Range_sampling_rate (computed, MHz):       	%0.6f' % (float(container['rangeRSR'])/1000000)))
+print(('Total_range_band_width (MHz):               	%s' % (float(container['rangeBW'])/1000000)))
+print(('Weighting_range:                            	%s %f' % (str.upper(container['rangeWind']), float(container['rangeWindCoeff']))))
 print('')
 print('*******************************************************************')
-print('Datafile: 					%s' % container['imageFile'])
-print('Dataformat: 				%s' % 'GeoTIFF')  # hardcoded!!!
-print('Number_of_lines_original: 			%s' % container['imageLines'])
-print('Number_of_pixels_original: 	                %s' % container['imagePixels'])
+print(('Datafile: 					%s' % container['imageFile']))
+print(('Dataformat: 				%s' % 'GeoTIFF'))  # hardcoded!!!
+print(('Number_of_lines_original: 			%s' % container['imageLines']))
+print(('Number_of_pixels_original: 	                %s' % container['imagePixels']))
 print('*******************************************************************')
 print('* End_readfiles:_NORMAL')
 print('*******************************************************************')
 print('')
 print('')
 print('*******************************************************************')
-print('*_Start_leader_datapoints:  %s ' % container['orbitABS'].split('_')[1])
+print(('*_Start_leader_datapoints:  %s ' % container['orbitABS'].split('_')[1]))
 print('*******************************************************************')
 print(' t(s)		X(m)		Y(m)		Z(m)      X_V(m/s)      Y_V(m/s)      Z_V(m/s)')
-print('NUMBER_OF_DATAPOINTS: %s' % len(container['list_orbitTime']))
+print(('NUMBER_OF_DATAPOINTS: %s' % len(container['list_orbitTime'])))
 
 # MA : positions and velocities
 for i in range(len(container['list_orbitTime'])):
-    print(' %.6f %s %s %s %s %s %s' % (hms2sec(container['list_orbitTime'][i].split('T')[1].strip('Z')),
+    print((' %.6f %s %s %s %s %s %s' % (hms2sec(container['list_orbitTime'][i].split('T')[1].strip('Z')),
                                   container['list_orbitX'][i],
                                   container['list_orbitY'][i],
                                   container['list_orbitZ'][i],
                                   container['list_orbitXV'][i],
                                   container['list_orbitYV'][i],
-                                  container['list_orbitZV'][i]))
+                                  container['list_orbitZV'][i])))
 
 print('')
 print('*******************************************************************')

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #from IPython.Debugger import Tracer; debug_here = Tracer()
 #
@@ -153,8 +153,8 @@ parser.add_option('--resfile',
                                      help='resfile to which to add precise orbits')
 args = parser.parse_args()[0]
 
-print('Getting precise orbits for Radarsat2\norbit dir: {dir}\nresfile: {resfile}\nextratime: {extratime}'\
-    .format(dir=args.dir,extratime=args.extratime,resfile=args.resfile))
+print(('Getting precise orbits for Radarsat2\norbit dir: {dir}\nresfile: {resfile}\nextratime: {extratime}'\
+    .format(dir=args.dir,extratime=args.extratime,resfile=args.resfile)))
 # read res file for neccesary metadata
 res = load_resfile( args.resfile )
 
@@ -182,4 +182,4 @@ if len(orbit_points) > 4:
     # remove the leader orbit from the resfile
     clear_resfile_section( args.resfile, 'leader_datapoints')
 else:
-    print('No matching orbits found, tried orbit file {0}'.format(orbitfile))
+    print(('No matching orbits found, tried orbit file {0}'.format(orbitfile)))

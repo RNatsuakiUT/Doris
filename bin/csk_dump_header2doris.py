@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 #-----------------------------------------------------------------#
 # A python code for parsing CSK HDF5 file into python data structures
@@ -14,18 +14,18 @@ import numpy, h5py, sys, math, time, string # numpy and h5py  required for HDF5 
 codeRevision=1.0   # this code revision number
 
 def usage():
-    print 'INFO    : @(#)Doris InSAR software, $Revision: %s $, $Author: TUDelft $' % codeRevision
-    print
-    print 'Usage   : python csk_dump_header2doris.py csk_HDF5_product > OutputFileName'
-    print '                               where csk_HDF5_product is the input filename'
-    print
-    print '          This software is part of Doris InSAR software package.\n'
-    print '(c) 1999-2010 Delft University of Technology, the Netherlands.\n'
+    print('INFO    : @(#)Doris InSAR software, $Revision: %s $, $Author: TUDelft $' % codeRevision)
+    print()
+    print('Usage   : python csk_dump_header2doris.py csk_HDF5_product > OutputFileName')
+    print('                               where csk_HDF5_product is the input filename')
+    print()
+    print('          This software is part of Doris InSAR software package.\n')
+    print('(c) 1999-2010 Delft University of Technology, the Netherlands.\n')
 
 try:
   inputFileName  = sys.argv[1]
 except:
-    print '\nError   : Unrecognized input or missing arguments\n\n'
+    print('\nError   : Unrecognized input or missing arguments\n\n')
     usage()
     sys.exit(1)
 
@@ -38,7 +38,7 @@ qlk = s01.get('QLK')
 
 
 if f.parent.__contains__('/') == False or f.parent.__contains__('/S01') == False or f.parent.__contains__('/S01/SBI') == False or f.parent.__contains__('/S01/B001') == False or f.parent.__contains__('/S01/QLK') == False :
-   print 'ERROR: Wrong HDF5 format!'
+   print('ERROR: Wrong HDF5 format!')
 
 # reading the attributes  
 VolumeFile = f.attrs.__getitem__('Product Filename')
@@ -139,56 +139,56 @@ else:
 
 dummyVar = 'DUMMY'
 
-print('\ncsk_dump_header2doris.py v%s, doris software, 2010\n' % codeRevision)
+print(('\ncsk_dump_header2doris.py v%s, doris software, 2010\n' % codeRevision))
 print('*******************************************************************')
 print('*_Start_readfiles:')
 print('*******************************************************************')
-print('Volume file:                                     %s' % VolumeFile)
-print('Volume_ID:                                       %s' % Volume_ID)
-print('Volume_identifier:                               %s' % Volume_identifier)
-print('Volume_set_identifier:                           %s' % Volume_set_identifier)
-print('(Check)Number of records in ref. file:           %s' % NumberOfRecordsInRefFile)
-print('SAR_PROCESSOR:                                   %s L1A %s' % (SensorPlatformMissionIdentifier,SAR_PROCESSOR))
-print('SWATH:                                           %s' % Swath_no)
-print('PASS:                                            %s' % orbitDir)
-print('IMAGING_MODE:                                    %s %s' % (sceneMode,Polarisation))
-print('RADAR_FREQUENCY (Hz):                            %s' % Radar_frequency)
+print(('Volume file:                                     %s' % VolumeFile))
+print(('Volume_ID:                                       %s' % Volume_ID))
+print(('Volume_identifier:                               %s' % Volume_identifier))
+print(('Volume_set_identifier:                           %s' % Volume_set_identifier))
+print(('(Check)Number of records in ref. file:           %s' % NumberOfRecordsInRefFile))
+print(('SAR_PROCESSOR:                                   %s L1A %s' % (SensorPlatformMissionIdentifier,SAR_PROCESSOR)))
+print(('SWATH:                                           %s' % Swath_no))
+print(('PASS:                                            %s' % orbitDir))
+print(('IMAGING_MODE:                                    %s %s' % (sceneMode,Polarisation)))
+print(('RADAR_FREQUENCY (Hz):                            %s' % Radar_frequency))
 print('')
 #print('Product type specifier:                          %s' % ProductTypeSpecifier) # returns SCS_B
-print('Product type specifier:                          %s %s' % (SensorPlatformMissionIdentifier, ProductTypeSpecifier))
-print('Logical volume generating facility:              %s' % LogicalVolumeGeneratingFacility)
-print('Logical volume creation date:                    %s' % LogicalVolumeCreationDate)
-print('Location and date/time of product creation:      %s' % LocationAndDateTimeOfProductCreation)
+print(('Product type specifier:                          %s %s' % (SensorPlatformMissionIdentifier, ProductTypeSpecifier)))
+print(('Logical volume generating facility:              %s' % LogicalVolumeGeneratingFacility))
+print(('Logical volume creation date:                    %s' % LogicalVolumeCreationDate))
+print(('Location and date/time of product creation:      %s' % LocationAndDateTimeOfProductCreation))
 
 #print('Scene identification:                            Orbit: %s %s Mode: %s' % (SceneIdentification,orbitDir,sceneMode))
-print('Scene identification:                            Orbit: %s' % SceneIdentification)
-print('Scene location:                                  lat: %.4f lon: %.4f' % (float(Scene_centre_latitude),float(Scene_centre_longitude)))
+print(('Scene identification:                            Orbit: %s' % SceneIdentification))
+print(('Scene location:                                  lat: %.4f lon: %.4f' % (float(Scene_centre_latitude),float(Scene_centre_longitude))))
 print('')
-print('Leader file:                                     %s' % LeaderFile)
+print(('Leader file:                                     %s' % LeaderFile))
 #print('Sensor platform mission identifier:               %s' % SensorPlatformMissionIdentifier)
-print('Sensor platform mission identifier:              %s' % SAT_ID)
-print('Scene_centre_latitude:                           %s' % Scene_centre_latitude)
-print('Scene_centre_longitude:                          %s' % Scene_centre_longitude)
-print('Scene_centre_heading:                            %s' % Scene_centre_heading)
+print(('Sensor platform mission identifier:              %s' % SAT_ID))
+print(('Scene_centre_latitude:                           %s' % Scene_centre_latitude))
+print(('Scene_centre_longitude:                          %s' % Scene_centre_longitude))
+print(('Scene_centre_heading:                            %s' % Scene_centre_heading))
 #print('Radar_wavelength (m):                            0.031') #HARDCODED!!!
-print('Radar_wavelength (m):                            %s' % Radar_wavelength) 
-print('First_pixel_azimuth_time (UTC):                  %s' % First_pixel_azimuth_time)
-print('Pulse_Repetition_Frequency (computed, Hz):       %s' % PRF)
-print('Total_azimuth_band_width (Hz):                   %s' % Total_azimuth_band_width)
-print('Weighting_azimuth:                               %s' % string.upper(Weighting_azimuth))
-print('Xtrack_f_DC_constant (Hz, early edge):           %s' % Xtrack_f_DC_constant)
-print('Xtrack_f_DC_linear (Hz/s, early edge):           %s' % Xtrack_f_DC_linear)
-print('Xtrack_f_DC_quadratic (Hz/s/s, early edge):      %s' % Xtrack_f_DC_quadratic)
-print('Range_time_to_first_pixel (2way) (ms):           %0.15f' % (float(Range_time_to_first_pixel)))
-print('Range_sampling_rate (computed, MHz):             %0.6f' % (float(RSR)))
-print('Total_range_band_width (MHz):                    %s' % (float(Total_range_band_width)))
-print('Weighting_range:                                 %s' % string.upper(Weighting_range))
+print(('Radar_wavelength (m):                            %s' % Radar_wavelength)) 
+print(('First_pixel_azimuth_time (UTC):                  %s' % First_pixel_azimuth_time))
+print(('Pulse_Repetition_Frequency (computed, Hz):       %s' % PRF))
+print(('Total_azimuth_band_width (Hz):                   %s' % Total_azimuth_band_width))
+print(('Weighting_azimuth:                               %s' % string.upper(Weighting_azimuth)))
+print(('Xtrack_f_DC_constant (Hz, early edge):           %s' % Xtrack_f_DC_constant))
+print(('Xtrack_f_DC_linear (Hz/s, early edge):           %s' % Xtrack_f_DC_linear))
+print(('Xtrack_f_DC_quadratic (Hz/s/s, early edge):      %s' % Xtrack_f_DC_quadratic))
+print(('Range_time_to_first_pixel (2way) (ms):           %0.15f' % (float(Range_time_to_first_pixel))))
+print(('Range_sampling_rate (computed, MHz):             %0.6f' % (float(RSR))))
+print(('Total_range_band_width (MHz):                    %s' % (float(Total_range_band_width))))
+print(('Weighting_range:                                 %s' % string.upper(Weighting_range)))
 print('')
 print('*******************************************************************')
-print('Datafile:                                        %s' % Datafile)
-print('Dataformat:                                      %s' % 'HDF5')     # hardcoded!!!
-print('Number_of_lines_original:                        %s' % str(Number_of_lines_original))
-print('Number_of_pixels_original:                       %s' % str(Number_of_pixels_original))
+print(('Datafile:                                        %s' % Datafile))
+print(('Dataformat:                                      %s' % 'HDF5'))     # hardcoded!!!
+print(('Number_of_lines_original:                        %s' % str(Number_of_lines_original)))
+print(('Number_of_pixels_original:                       %s' % str(Number_of_pixels_original)))
 print('*******************************************************************')
 print('* End_readfiles:_NORMAL')
 print('*******************************************************************')
@@ -198,17 +198,17 @@ print('*******************************************************************')
 print('*_Start_leader_datapoints')
 print('*******************************************************************')
 print(' t(s)            X(m)            Y(m)            Z(m)            X_V(m/s)            Y_V(m/s)            Z_V(m/s)')
-print('NUMBER_OF_DATAPOINTS:                    %s' % str(NUMBER_OF_DATAPOINTS))
+print(('NUMBER_OF_DATAPOINTS:                    %s' % str(NUMBER_OF_DATAPOINTS)))
 print('')
 
 for i in range(NUMBER_OF_DATAPOINTS):
-    print(' %s %s %s %s %s %s %s' % (int(Time_Datapoints[i]),\
+    print((' %s %s %s %s %s %s %s' % (int(Time_Datapoints[i]),\
                                   X_Datapoints[i],\
                                   Y_Datapoints[i],\
                                   Z_Datapoints[i],\
 				  X_Velocity[i],\
                                   Y_Velocity[i],\
-                                  Z_Velocity[i]))
+                                  Z_Velocity[i])))
 
 print('')
 print('*******************************************************************')
