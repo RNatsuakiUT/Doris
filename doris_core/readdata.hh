@@ -30,11 +30,10 @@
  * writing of data to raw format outputfile.
  ****************************************************************/
 
-
 #ifndef READDATA_H
 #define READDATA_H
 
-using namespace std;                    // BK 29-Mar-2003, new compiler?
+using namespace std; // BK 29-Mar-2003, new compiler?
 
 // Jia defined this for compilation under windows
 // Bert Kampes, 24-Aug-2005
@@ -42,37 +41,37 @@ using namespace std;                    // BK 29-Mar-2003, new compiler?
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include "constants.hh"                                 // typedefs
-#include "readinput.hh"                                 // input structs
+#include "constants.hh" // typedefs
+#include "readinput.hh" // input structs
 
 // ______prototypes______
 void readvolume(
         input_readfiles &readfiles_arg,
-        const char      *chk1,
-        const char      *chk2,
-        const char      *chk3);
+        const char *chk1,
+        const char *chk2,
+        const char *chk3);
 
 void readleader(
         input_readfiles &readfiles_arg,
-        const int32      check);                        // process leader file
+        const int32 check); // process leader file
 
 void readnull(
-        const input_readfiles &readfiles_arg);          // process null file
+        const input_readfiles &readfiles_arg); // process null file
 
 void readdat(
         input_readfiles &readfiles_arg,
-        const int32      check);
+        const int32 check);
 
 // Modified by LG for reading ALOS Fine
 void palsar_fine_dump_data(
-                           const input_gen &generalinput,               
-                           const input_crop &writeslc_arg,
-                           const int32   check);                        
+        const input_gen &generalinput,
+        const input_crop &writeslc_arg,
+        const int32 check);
 
 void writeslc(
-        const input_gen &generalinput,                  // mem/ overwrite
+        const input_gen &generalinput, // mem/ overwrite
         const input_crop &writeslc_arg,
-        const int32      check);                        // process data file
+        const int32 check); // process data file
 
 void envisat_dump_data(
         const input_crop &writeslc_arg);
@@ -84,29 +83,37 @@ void envisat_dump_HH(
         const input_crop &writeslc_arg);
 
 void tsx_dump_data(
-                   const input_crop &writeslc_arg);
+        const input_crop &writeslc_arg);
 
 void rs2_dump_data(
-                   const input_crop &writeslc_arg);
+        const input_crop &writeslc_arg);
 
 void csk_dump_data(
-                   const input_crop &writeslc_arg);
+        const input_crop &writeslc_arg);
+
+void nisar_dump_data(
+        const input_crop &writeslc_arg);
+
+void biomass_dump_data(
+        const input_crop &writeslc_arg);
 
 void radarsat_dump_data(
-        const input_gen &generalinput,                  // mem/ overwrite
+        const input_gen &generalinput, // mem/ overwrite
         const input_crop &writeslc_arg);
 
 // BO.20100917
 void gammaprocessor_crop(
-        const input_gen &generalinput,                  // mem/ overwrite
-	const slcimage 	 &master,
+        const input_gen &generalinput, // mem/ overwrite
+        const slcimage &master,
         const input_crop &writeslc_arg);
 
-void  OversampleSLC(
-       const input_gen        &generalinput,
-       const slcimage         &imageinfo,
-       const input_oversample &oversampleinput,
-       const int16            fileid,
-       const real8            prfratio);
+void OversampleSLC(
+        const input_gen &generalinput,
+        const slcimage &imageinfo,
+        const input_oversample &oversampleinput,
+        const int16 fileid,
+        const real8 prfratio,
+        const real8 rbwratio,
+        const real8 cshift);
 
 #endif // READDATA_H
