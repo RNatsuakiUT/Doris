@@ -6,12 +6,24 @@
 //---------------------------------------------------//
 
 using namespace std;
+#define _XOPEN_SOURCE
+#include <sys/time.h> 
+#include <fstream>                      // for streams
 #include <iostream>         // cout
 #include <cstdio>         // sprintf?
 #include <cstdlib>         // exit() 
 #include <ctime>           // strptime, strftime
 #include <cstring>        // strcpy
-
+#ifdef __CYGWIN__
+// This define blocks some functions such as strptime() that are required
+#undef __STRICT_ANSI__
+#endif
+//#ifdef WIN32
+//  #include "winsock2.h"                 // Jia changed this
+// #else
+//  #include <netinet/in.h>                 // ntohl byteorder x86-HP unix
+// #endif
+// char *strptime(const char *s, const char  *format,  struct tm *tm);
 
 /* ***** */
 int main(int argc, char* argv[])
@@ -40,9 +52,9 @@ int main(int argc, char* argv[])
   char indatestring[128];
   char informat[128];
   char outformat[128];
-  strcpy(indatestring,argv[1]);
-  strcpy(informat,argv[2]);
-  strcpy(outformat,argv[3]);
+  snprintf(indatestring, sizeof(indatestring), "%s", argv[1]);
+  snprintf(informat, sizeof(informat), "%s", argv[2]);
+  snprintf(outformat, sizeof(outformat), "%s", argv[3]);
   if (verbose) 
     cerr << "input: " << indatestring << " " << informat << " " << outformat << endl;
 

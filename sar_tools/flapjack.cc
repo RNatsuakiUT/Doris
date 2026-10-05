@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
       factor = atoi(argv[2]);			// input filename arg1
       //--- fall through ---//
     case 2:
-      strcpy(ifile,argv[1]);			// input filename arg1
+      snprintf(ifile, sizeof(ifile), "%s", argv[1]);			// input filename arg1
       break; // ---      ---//
     default:
       usage(argv[0]);
@@ -94,7 +94,7 @@ int main(int argc, char* argv[])
   ostringstream omem;
   //  omem << ifile << "." << argv[0] << factor << ends;
   omem << ifile << "." << argv[0] << factor << ends;
-  strcpy(ofile,omem.str().c_str());
+  snprintf(ofile, sizeof(ofile), "%s", omem.str().c_str());
 
   //quick debugging
   //cout << "Test [omem_stream]: " << omem.str() << "\n";
@@ -126,11 +126,11 @@ int main(int argc, char* argv[])
   
   int tenpercent = int(floor(numberofpixels/10.));
   int percent = 0;
-  register complex<float> value,result;
-  register float mag;
+  complex<float> value,result;
+  float mag;
   if (factor==2)
     {
-      for (register int i=0; i<numberofpixels; ++i)
+      for (int i=0; i<numberofpixels; ++i)
 	{
 	  infile1.read((char*)&value,sizeofelement);
 	  mag    = sqrt(value.real()*value.real()+
@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
     }
   else if (factor==3)
     {
-      for (register int i=0; i<numberofpixels; ++i)
+      for (int i=0; i<numberofpixels; ++i)
 	{
 	  infile1.read((char*)&value,sizeofelement);
 	  mag    =      value.real()*value.real()+
@@ -162,14 +162,14 @@ int main(int argc, char* argv[])
     }
   else // factor > 3
     {
-      for (register int i=0; i<numberofpixels; ++i)
+      for (int i=0; i<numberofpixels; ++i)
 	{
 	  infile1.read((char*)&value,sizeofelement);
 	  mag = sqrt(value.real()*value.real()+
 		     value.imag()*value.imag());
 	  result = value;
 	  value /= mag;		// magnitude now 1.
-	  for (register int dummy=1; dummy<factor; ++dummy)
+	  for (int dummy=1; dummy<factor; ++dummy)
 	    result *= value;
 	  //result /= pow(mag,factor-1);
 	  outfile.write((char*)&result,sizeofelement);

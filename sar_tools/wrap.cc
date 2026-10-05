@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
   //char dummy2[ONE27];				// dummy string
   float a = -999.;				// start interval
   float b = -999.;				// stop interval
-  register int i;				// general counter
+  int i;				// general counter
   const int sizeofelement = sizeof(float);	// data in float file
 
 // ====== Handle input ======
@@ -65,11 +65,11 @@ int main(int argc, char* argv[])
       break;					// not required
 
     case 5:
-      strcpy(ofile,argv[4]);			// output filename arg4
+      snprintf(ofile, sizeof(ofile), "%s", argv[4]);			// output filename arg4
       //--- fall through ---//
 
     case 4:
-      strcpy(dummy,argv[3]);			// interval: b
+      snprintf(dummy, sizeof(dummy), "%s", argv[3]);			// interval: b
       i = (int)strlen(dummy);
       if (dummy[i-1] == 'i')			// likely to be pi
 	{
@@ -88,7 +88,7 @@ int main(int argc, char* argv[])
         b = atof(dummy);
 	}
 
-      strcpy(dummy,argv[2]);			// interval: a
+      snprintf(dummy, sizeof(dummy), "%s", argv[2]);			// interval: a
       i = (int)strlen(dummy);
       if (dummy[i-1] == 'i')			// likely to be pi
 	{
@@ -109,7 +109,7 @@ int main(int argc, char* argv[])
       //--- fall through ---//
 
     case 2:
-      strcpy(ifile,argv[1]);			// input filename arg1
+      snprintf(ifile, sizeof(ifile), "%s", argv[1]);			// input filename arg1
       break; // ---      ---//
 
     default:
@@ -123,8 +123,8 @@ int main(int argc, char* argv[])
     b =  PI;
   if (!strcmp(ofile," "))			// nothing specified
     {
-    strcpy(ofile,ifile);
-    strcat(ofile,".wrap");
+    snprintf(ofile, sizeof(ofile), "%s", ifile);
+    strncat(ofile, ".wrap", sizeof(ofile)-strlen(ofile)-1);
     }
 
 // ______ Check input ______
@@ -167,7 +167,7 @@ int main(int argc, char* argv[])
   ofstream wrapped(ofile, ios::out | ios::binary | ios::trunc);
   if (!wrapped) cerr << "Problem opening file: " << ofile << endl, exit(2);
 
-  register float phase;
+  float phase;
   const float bereik = b-a;
   const float normal = (.5*bereik)/PI;
   bool ais0 = false;

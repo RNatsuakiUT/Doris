@@ -60,13 +60,13 @@ int main(int argc, char* argv[])
       add=true;					// should be checked...
       //--- fall through ---//
     case 4:
-      strcpy(ofile,argv[3]);			// output filename arg3
+      snprintf(ofile, sizeof(ofile), "%s", argv[3]);			// output filename arg3
       //--- fall through ---//
     case 3:
-      strcpy(ifile2,argv[2]);			// input filename arg1
+      snprintf(ifile2, sizeof(ifile2), "%s", argv[2]);			// input filename arg1
       //--- fall through ---//
     case 2:
-      strcpy(ifile1,argv[1]);			// input filename arg1
+      snprintf(ifile1, sizeof(ifile1), "%s", argv[1]);			// input filename arg1
       break; // ---      ---//
     default:
       usage(argv[0]);
@@ -75,9 +75,9 @@ int main(int argc, char* argv[])
   // ______ Set defaults if required _____
   if (!strcmp(ofile," "))			// nothing specified
     {
-      strcpy(ofile,ifile1);
-      strcat(ofile,".min.");
-      strcpy(ofile,ifile2);
+      snprintf(ofile, sizeof(ofile), "%s", ifile1);
+      strncat(ofile, ".min.", sizeof(ofile)-strlen(ofile)-1);
+      snprintf(ofile, sizeof(ofile), "%s", ifile2);
     }
   
   // ______ Check / echo input ______
@@ -126,12 +126,12 @@ int main(int argc, char* argv[])
   int tenpercent = int(floor(numberofpixels/10.));
   int percent = 0;
 
-  register complex<float> value1;
-  register complex<float> value2;
+  complex<float> value1;
+  complex<float> value2;
   // ______ Good compiler would get rid of if in for loop, but 2b sure.
   if (add)
     {
-      for (register int i=0; i<numberofpixels; ++i)
+      for (int i=0; i<numberofpixels; ++i)
 	{
 	  infile1.read((char*)&value1,sizeofelement);
 	  infile2.read((char*)&value2,sizeofelement);
@@ -146,7 +146,7 @@ int main(int argc, char* argv[])
     }
   else
     {
-      for (register int i=0; i<numberofpixels; ++i)
+      for (int i=0; i<numberofpixels; ++i)
 	{
 	  infile1.read((char*)&value1,sizeofelement);
 	  infile2.read((char*)&value2,sizeofelement);

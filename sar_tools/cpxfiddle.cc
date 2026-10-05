@@ -249,13 +249,13 @@ void functie(Type realpart, Type imagpart, const commandlineinput &input)
         exit(1);
       }
     
-    // register int i,j,k,realindex,start;
+    // int i,j,k,realindex,start;
     // MA larger file size
     // MA this should be signed especially for j see case Magnitude
     // it is better to rearrange types int or long for these variables
     // j is a potential int whereas realindex seem unsigned long long, check again! 200806
-    register long long i,j,k,realindex; 
-    register streamoff start;
+    long long i,j,k,realindex; 
+    streamoff start;
     // ___ it seems this is not allowed in g++v3.2.  How to do it? ___
     // use new way if binary to stdout: cout.write((char*)&x, sizeof(x))
     //if (input.oformat!=ASCII) cout.write((char*)&x, sizeof(x));// binary to stdout!
@@ -739,7 +739,7 @@ void functie(Type realpart, Type imagpart, const commandlineinput &input)
       // ______ Compute output, store in array OUTPUT ______
       // ______ multilook here in X (range) direction ______
       // ______ store in LINE[j,x,x,j,x,x,j,..]; j are multilooked values ______
-      register int indexoutput = 0;                     // j is input index
+      int indexoutput = 0;                     // j is input index
       double dbl_real;// for normlaization with numlooks
       double dbl_imag;
   	  double dbl_real10; // for SPPLOT [RN]
@@ -1804,8 +1804,8 @@ bool handleinput(
   input.headerlength = 0;               // default
   input.mirrorX     = NOMIRROR;         // default
   input.mirrorY     = NOMIRROR;         // default
-  strcpy(input.cmap,"default");         // default (mag. gray/ otherwise hsv)
-  //strcpy(input.cmap,"gray");          // default (mag.)
+  snprintf(input.cmap, sizeof(input.cmap), "%s", "default");         // default (mag. gray/ otherwise hsv)
+  //snprintf(input.cmap, sizeof(input.cmap), "%s", "gray");          // default (mag.)
   input.numlines    = 0;
   input.dontohx     = false;            // default
   input.dohtonx     = false;            // default
@@ -2009,7 +2009,7 @@ static struct option const long_options[] =
         break;
         }
       case 'c':
-        strcpy(input.cmap,optarg);
+        snprintf(input.cmap, sizeof(input.cmap), "%s", optarg);
         break;
       case 'B':
         if (!strcmp(optarg,"s"))
@@ -2073,12 +2073,12 @@ static struct option const long_options[] =
   // filename: last argument
   // cerr << "OPTARG: " << argv[argc-1] << endl;
   // cerr << "OPTARG: " << argv[optind] << endl;
-  if (argv[optind]=="\0")
+  if (argv[optind] == nullptr || argv[optind][0] == '\0')
     {
     cerr << argv[0] << ": ERROR: No input file specified.\n";
     return false;
     }
-  strcpy(input.ifile,argv[optind]);
+  snprintf(input.ifile, sizeof(input.ifile), "%s", argv[optind]);
 
   // ______ Check for: "cpxfiddle --help" ______
   if (!strcmp(input.ifile,"help"))
@@ -2167,7 +2167,7 @@ static struct option const long_options[] =
   if (input.oformat==SUNRASTER)
     if (!strcmp(input.cmap,"default"))
       (input.dooutput==MAGNITUDE) ? 
-        strcpy(input.cmap,"gray") : strcpy(input.cmap,"hsv");
+        snprintf(input.cmap, sizeof(input.cmap), "%s", "gray") : snprintf(input.cmap, sizeof(input.cmap), "%s", "hsv");
 
   if (input.dooutput==PHASE)
     {
@@ -2190,7 +2190,7 @@ static struct option const long_options[] =
       if (!strcmp(input.cmap,"gray"))
         {
         cerr << "#WARNING: -q mixed: changing phase colormap from gray to hot (-c)\n";
-        strcpy(input.cmap,"hot");
+        snprintf(input.cmap, sizeof(input.cmap), "%s", "hot");
         }
       }
     }

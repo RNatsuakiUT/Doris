@@ -56,10 +56,10 @@ int main(int argc, char* argv[])
   switch (argc)
     {
     case 3:
-      strcpy(ofile,argv[2]);			// output filename arg3
+      snprintf(ofile, sizeof(ofile), "%s", argv[2]);			// output filename arg3
       //--- fall through ---//
     case 2:
-      strcpy(ifile1,argv[1]);			// input filename arg1
+      snprintf(ifile1, sizeof(ifile1), "%s", argv[1]);			// input filename arg1
       break; // ---      ---//
     default:
       usage(argv[0]);
@@ -68,8 +68,8 @@ int main(int argc, char* argv[])
   // ______ Set defaults if required _____
   if (!strcmp(ofile," "))			// nothing specified
     {
-    strcpy(ofile,ifile1);
-    strcat(ofile,".conj");
+    snprintf(ofile, sizeof(ofile), "%s", ifile1);
+    strncat(ofile, ".conj", sizeof(ofile)-strlen(ofile)-1);
     }
 
   // ______ Check / echo input ______
@@ -101,10 +101,10 @@ int main(int argc, char* argv[])
   int tenpercent = int(floor(numberofpixels/10.));
   int percent = 0;
 
-  register complex<float> value1;
-  register complex<float> value2;
+  complex<float> value1;
+  complex<float> value2;
   // ______ Good compiler would get rid of 'if' in for loop, but 2b sure.
-    for (register int i=0; i<numberofpixels; ++i)
+    for (int i=0; i<numberofpixels; ++i)
       {
       infile1.read((char*)&value1,sizeofelement);
       // infile2.read((char*)&value2,sizeofelement);

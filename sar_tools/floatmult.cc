@@ -65,7 +65,7 @@ int main(int argc, char* argv[])
       factor = atof(argv[2]);			// input filename arg1
       //--- fall through ---//
     case 2:
-      strcpy(ifile,argv[1]);			// input filename arg1
+      snprintf(ifile, sizeof(ifile), "%s", argv[1]);			// input filename arg1
       break; // ---      ---//
     default:
       usage(argv[0]);
@@ -84,7 +84,7 @@ int main(int argc, char* argv[])
   ostringstream omem;
   //  omem << ifile << "." << argv[0] << factor << ends;
   omem << ifile << "." << argv[0] << factor << endl;
-  strcpy(ofile,omem.str().c_str());
+  snprintf(ofile, sizeof(ofile), "%s", omem.str().c_str());
 
   //quick debugging
   //cout << "Test [omem_stream]: " << omem.str() << "\n";
@@ -116,8 +116,8 @@ int main(int argc, char* argv[])
   
   int tenpercent = int(floor(numberofpixels/10.));
   int percent = 0;
-  register float value;
-  for (register int i=0; i<numberofpixels; ++i)
+  float value;
+  for (int i=0; i<numberofpixels; ++i)
     {
       infile1.read((char*)&value,sizeofelement);
       value *= factor;
