@@ -34,11 +34,10 @@
  #%// BK 25-Aug-2000
  ****************************************************************/
 
-
 #ifndef PRODUCTINFO_H
 #define PRODUCTINFO_H
 
-using namespace std;                    // BK 29-Mar-2003, new compiler?
+using namespace std; // BK 29-Mar-2003, new compiler?
 
 // Jia defined this for compilation under windows
 // Bert Kampes, 24-Aug-2005
@@ -46,81 +45,73 @@ using namespace std;                    // BK 29-Mar-2003, new compiler?
 #pragma once
 #endif // _MSC_VER > 1000
 
-
-#include "constants.hh"                 // typedefs
-#include <cstring>                      // strcpy, req. on some systems
-
-
+#include "constants.hh" // typedefs
+#include <cstring>      // strcpy, req. on some systems
 
 // ====== Define template functions (no member no friend) ======
 // ______ (matrix class is declared way below) ______
-template <class Type> class matrix;
-
-
-
+template<class Type>
+class matrix;
 
 // ====== Struct slcimage: information on master/slave ======
-class productinfo                               // info on 'products'
+class productinfo // info on 'products'
   {
-  public:
-    char          file[EIGHTY];                   // current filename
-    // ______ window / multilook factors ______
-    window        win;                            // current window, line(1:N) etc
-    uint          multilookL;                     // multilookfactor in line (azi) dir.
-    uint          multilookP;                     // multilookfactor in pixel (ra) dir.
-    uint          sfsmulti; 					  // multilookfactor for sfs-spec [RN]
-    // ______ file format ______
-    int16         formatflag;                     // current read formatflag
+public:
+  char file[EIGHTY]; // current filename
+  // ______ window / multilook factors ______
+  window win;      // current window, line(1:N) etc
+  uint multilookL; // multilookfactor in line (azi) dir.
+  uint multilookP; // multilookfactor in pixel (ra) dir.
+  uint sfsmulti;   // multilookfactor for sfs-spec [RN]
+  // ______ file format ______
+  int16 formatflag; // current read formatflag
 
+  // ______ Public function in struct ______
+  // ______ constructor ______
+  productinfo()
+    {
+    formatflag = -1; // undefined
+    multilookL = 1;
+    multilookP = 1;
+    sfsmulti = 1;
+    } // rest ==0
 
-    // ______ Public function in struct ______
-    // ______ constructor ______
-    productinfo()               
+  // ______ fill it from info in resultfiles ______
+  void fillproductinfo(const char *file, const char *iden);
+
+  // ______ assignment operator ______
+  productinfo &operator=(productinfo X)
+    {
+    if (this != &X)
       {
-      formatflag = -1;// undefined
-      multilookL =  1;
-      multilookP =  1;
-      sfsmulti = 1;
-      } // rest ==0
-
-    // ______ fill it from info in resultfiles ______
-    void fillproductinfo(const char *file, const char *iden);
-
-    // ______ assignment operator ______
-    productinfo& operator = (productinfo X)
-      {
-      if (this != &X)
-        {
-        strcpy(file,X.file);
-        win        = X.win;
-        multilookL = X.multilookL;
-        multilookP = X.multilookP;
-        formatflag = X.formatflag;
-        sfsmulti = X.sfsmulti;
-        }
-      return *this;
-      };
-
-    // ______ show content ______
-    inline void showdata() const                  // show content
-      {DEBUG << "\ncurrent file: \t" << file
-             << "\nformatflag:   \t" << formatflag
-             << "\nmultilook:    \t" << multilookL << " " << multilookP
-             << "\nwindow:       \t" << win.linelo << " " << win.linehi
-                              << " " << win.pixlo  << " " << win.pixhi;
-       DEBUG.print();
+      strcpy(file, X.file);
+      win = X.win;
+      multilookL = X.multilookL;
+      multilookP = X.multilookP;
+      formatflag = X.formatflag;
+      sfsmulti = X.sfsmulti;
       }
+    return *this;
+    };
 
-    // ______ read data from file ______
-    matrix<real4> readphase(window win) const;
+  // ______ show content ______
+  inline void showdata() const // show content
+    {
+    DEBUG << "\ncurrent file: \t" << file
+          << "\nformatflag:   \t" << formatflag
+          << "\nmultilook:    \t" << multilookL << " " << multilookP
+          << "\nwindow:       \t" << win.linelo << " " << win.linehi
+          << " " << win.pixlo << " " << win.pixhi;
+    DEBUG.print();
+    }
 
-    // ______ read data from file ______
-    matrix<complr4> readdata(window win) const;
-    matrix<real4> readdatar4(window win) const; // [MA]
+  // ______ read data from file ______
+  matrix<real4> readphase(window win) const;
+
+  // ______ read data from file ______
+  matrix<complr4> readdata(window win) const;
+  matrix<real4> readdatar4(window win) const; // [MA]
 
   }; // END class productinfo
 
-
 #endif // PRODUCTINFO_H
-
-

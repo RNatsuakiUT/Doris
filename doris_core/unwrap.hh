@@ -25,15 +25,13 @@
  * $Date: 2005/08/24 10:03:18 $
  * $Author: kampes $
  *
- * Declaration of routines for unwrapping 
+ * Declaration of routines for unwrapping
  ****************************************************************/
 
-
-
-#ifndef UNWRAP_H                        // guard
+#ifndef UNWRAP_H // guard
 #define UNWRAP_H
 
-using namespace std;                    // BK 29-Mar-2003, new compiler?
+using namespace std; // BK 29-Mar-2003, new compiler?
 
 // Jia defined this for compilation under windows
 // Bert Kampes, 24-Aug-2005
@@ -41,33 +39,27 @@ using namespace std;                    // BK 29-Mar-2003, new compiler?
 #pragma once
 #endif // _MSC_VER > 1000
 
-
-#include "constants.hh"                 // typedefs
-#include "readinput.hh"                 // input structs
-#include "orbitbk.hh"                   // my orbit class
-#include "slcimage.hh"                  // my slc image class
-#include "productinfo.hh"               // my 'products' class
-
-
+#include "constants.hh"   // typedefs
+#include "readinput.hh"   // input structs
+#include "orbitbk.hh"     // my orbit class
+#include "slcimage.hh"    // my slc image class
+#include "productinfo.hh" // my 'products' class
 
 // ______ Use stanford software through unix calls _____
 void unwraptreeframon(
-        const input_gen     &generalinput,
-        const input_unwrap  &unwrapinput,
-        const productinfo   &interferogram);
+        const input_gen &generalinput,
+        const input_unwrap &unwrapinput,
+        const productinfo &interferogram);
 
 // ______ Use snaphu software through unix calls _____
 void snaphu_unwrap(
-        const input_gen     &generalinput,
-        const input_unwrap  &unwrapinput,
-        const productinfo   &interferogram,
-        const slcimage      &master,
-        const slcimage      &slave,
-              orbit         &masterorbit,
-              orbit         &slaveorbit,
-        const input_ell     &ellips);
+        const input_gen &generalinput,
+        const input_unwrap &unwrapinput,
+        const productinfo &interferogram,
+        const slcimage &master,
+        const slcimage &slave,
+        orbit &masterorbit,
+        orbit &slaveorbit,
+        const input_ell &ellips);
 
 #endif // UNWRAP_H
-
-
-

@@ -39,17 +39,17 @@
  *  cannot be used.                                                     *
  ************************************************************************/
 
-#include "constants.hh"                 // typedefs, window
+#include "constants.hh" // typedefs, window
 
-#include <iostream>                     // cout etc.
-#include <fstream>                      // ofstream type
-#include <strstream>                    // memory stream
-#include <iomanip>                      // setw etc.
-#include <algorithm>                    // max
-#include <cstring>                      // memset according to g++ (?)
+#include <iostream>  // cout etc.
+#include <fstream>   // ofstream type
+#include <sstream>   // was <strstream>                    // memory stream
+#include <iomanip>   // setw etc.
+#include <algorithm> // max
+#include <cstring>   // memset according to g++ (?)
 #include <complex>
-#ifdef __DEBUGMAT1                      // use index checking, alloc
-  #include <new>                        // bad_alloc
+#ifdef __DEBUGMAT1 // use index checking, alloc
+#include <new>     // bad_alloc
 #endif
 
 // ______ Keep track of total allocated memory ______
@@ -57,16 +57,13 @@
 // ______ there is a problem here, but how to declare a global? ______
 // ______ if called from different files, not correct bookkeeping ______
 // ______ therefor we define it above main in processor.cc ______
-#ifdef __DEBUGMAT2                              // use index checking, alloc
-  extern uint totalallocated;                   // [B]
+#ifdef __DEBUGMAT2          // use index checking, alloc
+extern uint totalallocated; // [B]
 #endif
 
 // ______ message objects, global, set in main ______
 extern bk_messages matERROR;
 extern bk_messages matDEBUG;
-
-
-
 
 // ====== Start of class definition ======
 // ====== Private functions ======
@@ -78,92 +75,87 @@ extern bk_messages matDEBUG;
  *    g++ w/o exception handling, ...                           *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
-void matrix<Type>::allocate(uint numlines, uint numpixels)      // allocator
+template<class Type>
+void matrix<Type>::allocate(uint numlines, uint numpixels) // allocator
   {
-  #ifdef __DEBUGMAT1
-  if (numlines==0 || numpixels==0)
+#ifdef __DEBUGMAT1
+  if (numlines == 0 || numpixels == 0)
     {
     matERROR << "Allocation impossible: size (l,p): "
-         << numlines << ", " << numpixels;
+             << numlines << ", " << numpixels;
     matERROR.print();
     }
-  #endif
+#endif
   nrows = numlines;
   ncols = numpixels;
-  nsize = numlines*numpixels;
+  nsize = numlines * numpixels;
   // Bert Kampes, 07-Apr-2005: try/catch should work by now...
   try
     {
-    data = new Type*[numlines];// get memory : make linear array of pointers
+    data = new Type *[numlines]; // get memory : make linear array of pointers
     }
   catch (bad_alloc)
     {
     matERROR << "code 502: first allocation failed, size: "
-         << numlines << ", " << numpixels;
+             << numlines << ", " << numpixels;
     matERROR.print();
     }
   try
     {
-    data[0] = new Type[nsize];// get memory : get the first pointer for the memory block, later we'll fill in all the address
+    data[0] = new Type[nsize]; // get memory : get the first pointer for the memory block, later we'll fill in all the address
     }
-  catch(bad_alloc)
+  catch (bad_alloc)
     {
     matERROR << "code 502: second allocation failed: size: "
-         << numlines << ", " << numpixels;
+             << numlines << ", " << numpixels;
     matERROR.print();
     }
-  for (register uint i=1; i<numlines; i++)
-    data[i] = data[i-1]+numpixels;              // start at 0,0
+  for (uint i = 1; i < numlines; i++) {
+    data[i] = data[i - 1] + numpixels; // start at 0,0
+}
 
-  #ifdef __DEBUGMAT2
-  uint allocated = sizeof(Type)*nsize;          // [B]
-  totalallocated += allocated;                  // [B]
+#ifdef __DEBUGMAT2
+  uint allocated = sizeof(Type) * nsize; // [B]
+  totalallocated += allocated;           // [B]
   matDEBUG << "allocated   matrix("
-       << numlines << "," << numpixels << ") at: " << &data[0][0] << " ("
-       << setw(10) << allocated << "B, total: "
-       << setw(10) << totalallocated << "B)";
+           << numlines << "," << numpixels << ") at: " << &data[0][0] << " ("
+           << setw(10) << allocated << "B, total: "
+           << setw(10) << totalallocated << "B)";
   matDEBUG.print();
-  #endif
+#endif
   } // END allocate
-
-
 
 /****************************************************************
  * initialize = allocate + set 0                                *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::initialize(uint numlines, uint numpixels)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("initialization matrix.");
-  #endif
-  allocate(numlines,numpixels);
+#endif
+  allocate(numlines, numpixels);
   clean();
   } // END initialize
-
-
 
 #ifdef __DEBUGMAT1
 /****************************************************************
  * checkindex (l,p)                                             *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::checkindex(uint line, uint pixel) const
   {
-  if (int32(line) > int32(nrows)-1 || int32(pixel) > int32(ncols)-1)
+  if (int32(line) > int32(nrows) - 1 || int32(pixel) > int32(ncols) - 1)
     {
     matERROR << "Wrong index (l,p)=(" << line << "," << pixel
-         << "); Matrix(" << nrows << "," << ncols
-         << ") at " << &data[0][0];
+             << "); Matrix(" << nrows << "," << ncols
+             << ") at " << &data[0][0];
     matERROR.print();
     }
   } // END checkindex
 #endif
-
-
 
 // ====== Public functions ======
 // ====== Constructors ======
@@ -171,60 +163,68 @@ void matrix<Type>::checkindex(uint line, uint pixel) const
  * matrix<real8> A;                                             *  \\
  * Bert Kampes, 11-Dec-1998                                     *  \\
  ****************************************************************/
-template <class Type>
-matrix<Type>::matrix()                          // constructor (0 arg)
+template<class Type>
+matrix<Type>::matrix() // constructor (0 arg)
   {
   nrows = 0;
   ncols = 0;
   nsize = 0;
-  data  = 0;                                    // address of pointer array is set to null
+  data = nullptr; // address of pointer array is set to null
   } // END constructor
-
-
 
 /****************************************************************
  * matrix<real8> A(3,3);                                        *
  * Bert Kampes, 11-Dec-1998                                     *
  ****************************************************************/
-template <class Type>
+template<class Type>
 matrix<Type>::matrix(uint lines, uint pixels)
   {
-  initialize(lines,pixels);                             // set to 0
+  initialize(lines, pixels); // set to 0
   } // END constructor
-
-
 
 /****************************************************************
  * matrix<real8> A=B;                                           *
- * copy constructor; avoids default for dynamical memory:       * 
+ * copy constructor; avoids default for dynamical memory:       *
  * bitwise copy.                                                *
  * Bert Kampes, 11-Dec-1998                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>::matrix(const matrix<Type>& A)
+template<class Type>
+matrix<Type>::matrix(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
-  matDEBUG.print("copy constructor.");  // [MA] ex: copy constructor is called when operator << is used.
-  #endif
+#ifdef __DEBUGMAT2
+  matDEBUG.print("copy constructor."); // [MA] ex: copy constructor is called when operator << is used.
+#endif
   if (A.nsize)
     {
-    allocate(A.nrows,A.ncols);
-    memcpy(data[0],A.data[0],nsize*sizeof(Type));
+    allocate(A.nrows, A.ncols);
+    memcpy(data[0], A.data[0], nsize * sizeof(Type));
     }
   else
-  {                                      // [MA] allow for NULL matrix returns when dynamic memory  nsize =0 
-    allocate(A.nrows,A.ncols);
-    #ifdef __DEBUGMAT2  // [MA] delete this set in future
-    matDEBUG << "new mtx nsize: " << nsize << " datasize: " << nsize*sizeof(Type) << " dataaddress: " << &data << " vs inputadd: " << &A  << " addressNULLmemblock: " << data[0];
+    { // [MA] allow for NULL matrix returns when dynamic memory  nsize =0
+    allocate(A.nrows, A.ncols);
+#ifdef __DEBUGMAT2 // [MA] delete this set in future
+    matDEBUG << "new mtx nsize: " << nsize << " datasize: " << nsize * sizeof(Type) << " dataaddress: " << &data << " vs inputadd: " << &A << " addressNULLmemblock: " << data[0];
     matDEBUG.print();
-    #endif
-    //memcpy(data[0],0,nsize*sizeof(Type)); // clean() // when nsize=0 and A.data[0] doesn't exist (data=0), such as a null mtx, thus memcpy crashes with "Caught SIGSEGV: Segmentation fault."
-                                          // this is necessary otherwise it points to a memory block
-   data[0]=0;
-   }
+#endif
+    // memcpy(data[0],0,nsize*sizeof(Type)); // clean() // when nsize=0 and A.data[0] doesn't exist (data=0), such as a null mtx, thus memcpy crashes with "Caught SIGSEGV: Segmentation fault."
+    //  this is necessary otherwise it points to a memory block
+    data[0] = nullptr;
+    }
   } // END constructor
 
-
+/****************************************************************
+ * matrix(matrix<Type> &&A)                                     *
+ * Move constructor: steal A's buffer, leave A empty.           *
+ ****************************************************************/
+template<class Type>
+matrix<Type>::matrix(matrix<Type> &&A) noexcept
+  : data(A.data), nrows(A.nrows), ncols(A.ncols), nsize(A.nsize)
+  {
+  A.data  = nullptr;
+  A.nrows = 0;
+  A.ncols = 0;
+  A.nsize = 0;
+  } // END move constructor
 
 /****************************************************************
  * matrix<int32> A(win,B)                                       *
@@ -234,92 +234,89 @@ matrix<Type>::matrix(const matrix<Type>& A)
  * window starts at 0 (matrix index)                            *
  #%// BK 25-Oct-2000                                            *
  ****************************************************************/
-template <class Type>
-matrix<Type>::matrix (window win, const matrix<Type>& A)
+template<class Type>
+matrix<Type>::matrix(window win, const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("constructor as part.");
-  #endif
-  // ______ Check arguments ______
-  #ifdef __DEBUGMAT1
-  if (win.linehi<win.linelo)
+#endif
+// ______ Check arguments ______
+#ifdef __DEBUGMAT1
+  if (win.linehi < win.linelo)
     matERROR.print("constructor (4uint,matrix): win.linehi<linelo ?");
-  if (win.pixhi<win.pixlo)
+  if (win.pixhi < win.pixlo)
     matERROR.print("constructor (4uint,matrix): win.pixhi<pixlo ?");
-  A.checkindex(win.linehi,win.pixhi);
-  #endif
+  A.checkindex(win.linehi, win.pixhi);
+#endif
   // ______ Allocate new matrix and fill ______
-  const uint numlin  = win.lines();
-  const uint numpix  = win.pixels();
-  const uint sizelin = numpix*sizeof(Type);
-  allocate(numlin,numpix);
-  for(register uint i=0; i<numlin; i++)
-    memcpy(data[i],A[win.linelo+i]+win.pixlo,sizelin);
+  const uint numlin = win.lines();
+  const uint numpix = win.pixels();
+  const uint sizelin = numpix * sizeof(Type);
+  allocate(numlin, numpix);
+  for (uint i = 0; i < numlin; i++) {
+    memcpy(data[i], A[win.linelo + i] + win.pixlo, sizelin);
+}
   } // END constructor
-
-
 
 // ======Destructor======
 /****************************************************************
  * Destructor                                                   *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 matrix<Type>::~matrix()
   {
-  if (data==0) return;
-  #ifdef __DEBUGMAT2
-  uint deallocated  = sizeof(Type)*nsize;       // [B]
-  totalallocated   -= deallocated;              // [B]
+  if (data == nullptr) {
+    return;
+}
+#ifdef __DEBUGMAT2
+  uint deallocated = sizeof(Type) * nsize; // [B]
+  totalallocated -= deallocated;           // [B]
   matDEBUG << "deallocated matrix("
-       << nrows << "," << ncols << ") at: " << data[0] << " ("
-       << setw(10) << deallocated    << "B; total: "
-       << setw(10) << totalallocated << "B)";
+           << nrows << "," << ncols << ") at: " << data[0] << " ("
+           << setw(10) << deallocated << "B; total: "
+           << setw(10) << totalallocated << "B)";
   matDEBUG.print();
-  #endif
+#endif
 
-  delete [] data[0];                    // deallocate
-  delete [] data;                       // deallocate
-  data=0;                               // set to null pointer
+  delete[] data[0]; // deallocate
+  delete[] data;    // deallocate
+  data = nullptr;         // set to null pointer
   } // END destructor
-
-
 
 // ======Data functions======
 /****************************************************************
  * A.setdata(w)                                                 *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
-void matrix<Type>::setdata(Type w)      // sets matrix to constant
+template<class Type>
+void matrix<Type>::setdata(Type w) // sets matrix to constant
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("A.setdata(w)");
-  #endif
+#endif
   Type *pnt = data[0];
-  for (register uint i=0;i<nsize;i++)
+  for (uint i = 0; i < nsize; i++) {
     (*pnt++) = Type(w);
+}
   } // END setdata
-
-
 
 /****************************************************************
  * setdata(i,j,A)                                               *
  *    put matrix A on l1,p1                                     *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
-void matrix<Type>::setdata(uint l1, uint p1, const matrix<Type>& A)
+template<class Type>
+void matrix<Type>::setdata(uint l1, uint p1, const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT1
-  checkindex(l1+A.nrows-1,p1+A.ncols-1);// check far most corner 
-  #endif
-  const uint sizelin = A.ncols*sizeof(Type);
-  for (register uint i=0;i<A.nrows;i++)
-    memcpy(data[i+l1]+p1,A[i],sizelin);
+#ifdef __DEBUGMAT1
+  checkindex(l1 + A.nrows - 1, p1 + A.ncols - 1); // check far most corner
+#endif
+  const uint sizelin = A.ncols * sizeof(Type);
+  for (uint i = 0; i < A.nrows; i++) {
+    memcpy(data[i + l1] + p1, A[i], sizelin);
+}
   } // END setdata
-
-
 
 /****************************************************************
  * B.setdata(win, A, winA):                                     *
@@ -328,394 +325,367 @@ void matrix<Type>::setdata(uint l1, uint p1, const matrix<Type>& A)
  * first line matrix =0 (?)
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::setdata(window winin, const matrix<Type> &A, window winA)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("setdata (win,A,win)");
-  #endif
+#endif
 
   // ______Check default request______
   if (winin.linehi == 0 && winin.pixhi == 0)
-    {winin.linehi = nrows  -1;
-     winin.pixhi  = ncols -1;}
-  if  (winA.linehi == 0 &&  winA.pixhi == 0)
-    {winA.linehi  = A.lines()  -1;
-     winA.pixhi   = A.pixels() -1;}
+    {
+    winin.linehi = nrows - 1;
+    winin.pixhi = ncols - 1;
+    }
+  if (winA.linehi == 0 && winA.pixhi == 0)
+    {
+    winA.linehi = A.lines() - 1;
+    winA.pixhi = A.pixels() - 1;
+    }
 #ifdef __DEBUGMAT1
   if (((winin.linehi - winin.linelo) != (winA.linehi - winA.linelo)) ||
-       ((winin.pixhi  - winin.pixlo) != (winA.pixhi  - winA.pixlo))    )
+      ((winin.pixhi - winin.pixlo) != (winA.pixhi - winA.pixlo)))
     matERROR.print("code 901: wrong input.");
-  if (winin.linehi<winin.linelo || winin.pixhi<winin.pixlo)
+  if (winin.linehi < winin.linelo || winin.pixhi < winin.pixlo)
     matERROR.print("code 901: wrong input.1");
-  if ((winin.linehi > nrows  -1) ||
-      (winin.pixhi  > ncols -1)   )
+  if ((winin.linehi > nrows - 1) ||
+      (winin.pixhi > ncols - 1))
     matERROR.print("code 901: wrong input.2");
-  if ((winA.linehi > A.lines()  -1) ||
-      (winA.pixhi  > A.pixels() -1)   )
+  if ((winA.linehi > A.lines() - 1) ||
+      (winA.pixhi > A.pixels() - 1))
     matERROR.print("code 901: wrong input.3");
 #endif
   // ______ Fill data ______
-  const uint sizelin = (winA.pixhi - winA.pixlo + 1)*sizeof(Type);
-  for(register uint i=winin.linelo; i<=winin.linehi;i++)
-    memcpy(data[i]+winin.pixlo,A[i-winin.linelo+winA.linelo]+winA.pixlo,sizelin);
+  const uint sizelin = (winA.pixhi - winA.pixlo + 1) * sizeof(Type);
+  for (uint i = winin.linelo; i <= winin.linehi; i++) {
+    memcpy(data[i] + winin.pixlo, A[i - winin.linelo + winA.linelo] + winA.pixlo, sizelin);
+}
   } // END setdata
-
-
 
 /****************************************************************
  * B.setdata(A, winA):                                          *
  *    set total of B to winA of A                               *
  *    Bert Kampes, 17-Mar-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::setdata(const matrix<Type> &A, window winA)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("setdata (A,win)");
-  #endif
-  #ifdef __DEBUGMAT1
-  if (((nrows  -1) != (winA.linehi - winA.linelo)) ||
-       ((ncols -1) != (winA.pixhi  - winA.pixlo))    )
+#endif
+#ifdef __DEBUGMAT1
+  if (((nrows - 1) != (winA.linehi - winA.linelo)) ||
+      ((ncols - 1) != (winA.pixhi - winA.pixlo)))
     matERROR.print("code 901: wrong input.");
-  if ((winA.linehi > A.lines()  -1) ||
-      (winA.pixhi  > A.pixels() -1)   )
+  if ((winA.linehi > A.lines() - 1) ||
+      (winA.pixhi > A.pixels() - 1))
     matERROR.print("code 901: wrong input.3");
-  #endif
+#endif
   // ______ Fill data ______
-  const uint sizelin = ncols*sizeof(Type);
-  for(register uint i=0; i<nrows;i++)
-    memcpy(data[i],A[i+winA.linelo]+winA.pixlo,sizelin);
+  const uint sizelin = ncols * sizeof(Type);
+  for (uint i = 0; i < nrows; i++) {
+    memcpy(data[i], A[i + winA.linelo] + winA.pixlo, sizelin);
+}
   } // END setdata
-
-
 
 /****************************************************************
  * A=B.getdata(win)                                             *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 matrix<Type> matrix<Type>::getdata(window win) const
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("getdata.");
-  #endif
-  #ifdef __DEBUGMAT1
-  if (win.linehi<win.linelo || win.pixhi<win.pixlo)
+#endif
+#ifdef __DEBUGMAT1
+  if (win.linehi < win.linelo || win.pixhi < win.pixlo)
     matERROR.print(
-    "code 501: matrix::getdata (win): arguments are wrong, l1<l2,p1<p2");
-  checkindex(win.linehi,win.pixhi);
-  #endif
+            "code 501: matrix::getdata (win): arguments are wrong, l1<l2,p1<p2");
+  checkindex(win.linehi, win.pixhi);
+#endif
   const uint numlin = win.lines();
   const uint numpix = win.pixels();
-  matrix<Type> Result(numlin,numpix);                   // =data(;
-  for(register uint i=0; i<numlin; i++)
-    memcpy(Result[i],data[i+win.linelo]+win.pixlo,numpix*sizeof(Type));
+  matrix<Type> Result(numlin, numpix); // =data(;
+  for (uint i = 0; i < numlin; i++) {
+    memcpy(Result[i], data[i + win.linelo] + win.pixlo, numpix * sizeof(Type));
+}
   return Result;
   } // END getdata
 
-
-
 /****************************************************************
  * A=B.getrow(row)                                              *
- * rows: 0 1 2 ..                                               *       
+ * rows: 0 1 2 ..                                               *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 matrix<Type> matrix<Type>::getrow(uint line) const
   {
-  #ifdef __DEBUGMAT1
-  checkindex(line,0);
-  #endif
-  matrix<Type> Result(1,ncols);
-  memcpy(Result[0],data[line],ncols*sizeof(Type));
+#ifdef __DEBUGMAT1
+  checkindex(line, 0);
+#endif
+  matrix<Type> Result(1, ncols);
+  memcpy(Result[0], data[line], ncols * sizeof(Type));
   return Result;
   } // END getrow
 
-
-
 /****************************************************************
  * A=B.getcolumn(col)                                           *
- * cols: 0 1 2 ..                                               *       
+ * cols: 0 1 2 ..                                               *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 matrix<Type> matrix<Type>::getcolumn(uint pixel) const
   {
-  #ifdef __DEBUGMAT1
-    checkindex(0,pixel);
-  #endif
-  matrix<Type> Result(nrows,1);
-  Type *pntA = data[0]+pixel;
+#ifdef __DEBUGMAT1
+  checkindex(0, pixel);
+#endif
+  matrix<Type> Result(nrows, 1);
+  Type *pntA = data[0] + pixel;
   Type *pntR = Result[0];
-  for (register uint i=0; i<nrows; ++i)
+  for (uint i = 0; i < nrows; ++i)
     {
     (*pntR++) = *pntA;
-    pntA     += ncols;
+    pntA += ncols;
     }
   return Result;
   } // END getcolumn
-
-
 
 /****************************************************************
  * B.showdata()                                                 *
  *    Bert Kampes, 01-Feb-1999                                  *
  *    Mahmut Arikan, 22-May-2009 - Adjustment to see more digits*
  ****************************************************************/
-template <class Type>
-void matrix<Type>::showdata() const                     // show all data in matrix
+template<class Type>
+void matrix<Type>::showdata() const // show all data in matrix
   {
-  #ifdef __DEBUGMAT1
-    matDEBUG.print("showdata.");
-  #endif
-  #ifdef __DEBUGMAT2
-  if (nrows>100 || ncols>15)
+#ifdef __DEBUGMAT1
+  matDEBUG.print("showdata.");
+#endif
+#ifdef __DEBUGMAT2
+  if (nrows > 100 || ncols > 15)
     {
     matDEBUG << "matrix ("
-         << nrows << "," << ncols
-         << "); only showing data (0:99,0:9).";
+             << nrows << "," << ncols
+             << "); only showing data (0:99,0:9).";
     matDEBUG.print();
     }
-  #endif
-  const uint L = (nrows<=100) ? nrows : 100;
-  const uint P = (ncols<=10)  ? ncols : 10;
-  matDEBUG.precision(11);  // [MA] 9 --> 11
-  matDEBUG.width(12);      // 10 --> 12
-  //matDEBUG.setf(ios::left, ios::adjustfield); // [MA] this failed by 4.01 version of messages.hh
-  for (register uint i=0; i<L; i++)
+#endif
+  const uint L = (nrows <= 100) ? nrows : 100;
+  const uint P = (ncols <= 10) ? ncols : 10;
+  matDEBUG.precision(11); // [MA] 9 --> 11
+  matDEBUG.width(12);     // 10 --> 12
+  // matDEBUG.setf(ios::left, ios::adjustfield); // [MA] this failed by 4.01 version of messages.hh
+  for (uint i = 0; i < L; i++)
     {
-    for (register uint j=0; j<P; j++)
+    for (uint j = 0; j < P; j++)
       {
       // matDEBUG << data[i][j] << " ";
       matDEBUG << left << data[i][j] << " ";
       }
-    matDEBUG.print();// prevent too much in ostream
+    matDEBUG.print(); // prevent too much in ostream
     }
   matDEBUG.reset();
   } // END showdata
-
-
 
 /****************************************************************
  * bool v = A.isvector()                                        *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
-inline
-bool matrix<Type>::isvector() const
+template<class Type>
+inline bool matrix<Type>::isvector() const
   {
-  return (nrows==1 || ncols==1) ? true : false;
+  return (nrows == 1 || ncols == 1) ? true : false;
   } // END isvector
-
-
 
 /****************************************************************
  * uint l = A.lines()                                           *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
-inline
-uint matrix<Type>::lines() const                // return number of lines
+template<class Type>
+inline uint matrix<Type>::lines() const // return number of lines
   {
   return nrows;
   } // END lines
-
-
 
 /****************************************************************
  * uint p = A.pixels()                                          *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
-inline
-uint matrix<Type>::pixels() const               // return number of pixels
+template<class Type>
+inline uint matrix<Type>::pixels() const // return number of pixels
   {
   return ncols;
   } // END pixels
-
-
 
 /****************************************************************
  * uint s = A.size()                                            *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
-inline
-uint matrix<Type>::size() const                         // return nsize
+template<class Type>
+inline uint matrix<Type>::size() const // return nsize
   {
   return nsize;
   } // END size
-
-
 
 /****************************************************************
  * A.resize(l,p)                                                *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::resize(uint l1, uint p1)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("resize.");
-  #endif
-  if (l1 == nrows && p1 == ncols) return;
-  else if (data!=0)                             // check for allocated memory
+#endif
+  if (l1 == nrows && p1 == ncols) {
+    return;
+  } else if (data != nullptr) // check for allocated memory
     {
-    #ifdef __DEBUGMAT2
-    uint deallocated  = sizeof(Type)*nsize;       // [B]
-    totalallocated   -= deallocated;            // [B]
+#ifdef __DEBUGMAT2
+    uint deallocated = sizeof(Type) * nsize; // [B]
+    totalallocated -= deallocated;           // [B]
     matDEBUG << "deallocated matrix("
              << nrows << "," << ncols << ") at: " << data[0] << " ("
              << setw(10) << deallocated << "B; total: "
              << setw(10) << totalallocated << "B)";
     matDEBUG.print();
-    #endif
-    delete [] data[0];
-    delete [] data;
-    data=0;
+#endif
+    delete[] data[0];
+    delete[] data;
+    data = nullptr;
     }
-  initialize(l1,p1);                            // set to 0
+  initialize(l1, p1); // set to 0
   } // END resize
-
-
 
 /****************************************************************
  * A.clean()                                                    *
  *    Bert Kampes, 01-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
-void matrix<Type>::clean()              // sets 2 zero
+template<class Type>
+void matrix<Type>::clean() // sets 2 zero
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("mtx clean.");
-  #endif
-  memset(data[0],0,nsize*sizeof(Type));
+#endif
+  memset(data[0], 0, nsize * sizeof(Type));
   } // END clean
-
-
 
 /****************************************************************
  * B.setrow(row, data)                                          *
- * rows: 0 1 2 .., should fit exactly                           *       
+ * rows: 0 1 2 .., should fit exactly                           *
  * orientation of vector is disregarded.                        *
  *    Bert Kampes, 12-Oct-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::setrow(uint line, const matrix<Type> &LINE)
   {
-  #ifdef __DEBUGMAT1
-  checkindex(line,0);
+#ifdef __DEBUGMAT1
+  checkindex(line, 0);
   if (!(LINE.nrows == 1 || LINE.ncols == 1))
     matERROR.print("setrow: only vector input.");
   if (LINE.nsize != ncols)
     matERROR.print("setrow: sizeofvector should be same as matrix.");
-  #endif
-  memcpy(data[line],LINE[0],ncols*sizeof(Type));
+#endif
+  memcpy(data[line], LINE[0], ncols * sizeof(Type));
   } // END setrow
-
-
 
 /****************************************************************
  * B.setrow(row, scalar)                                        *
- * rows: 0 1 2 .., should fit exactly                           *       
+ * rows: 0 1 2 .., should fit exactly                           *
  * orientation of vector is disregarded.                        *
  *    Bert Kampes, 12-Oct-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::setrow(uint line, Type scalar)
   {
-  #ifdef __DEBUGMAT1
-  checkindex(line,0);
-  #endif
-  for (register Type *pntB =&data[line][0];
-                      pntB<=&data[line][ncols-1];
-                      pntB++)
+#ifdef __DEBUGMAT1
+  checkindex(line, 0);
+#endif
+  for (Type *pntB = &data[line][0];
+       pntB <= &data[line][ncols - 1];
+       pntB++) {
     *pntB = scalar;
+}
   } // END setrow
-
-
 
 /****************************************************************
  * B.setcolumn(col, COL)                                        *
- * cols: 0 1 2 ..                                               *       
+ * cols: 0 1 2 ..                                               *
  * orientation of vector is disregarded.                        *
  *    Bert Kampes, 12-Oct-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::setcolumn(uint pixel, const matrix<Type> &COLUMN)
   {
-  #ifdef __DEBUGMAT1
-  checkindex(0,pixel);
+#ifdef __DEBUGMAT1
+  checkindex(0, pixel);
   if (!(COLUMN.nrows == 1 || COLUMN.ncols == 1))
     matERROR.print("setcolumn: only vector input.");
   if (COLUMN.nsize != nrows)
     matERROR.print("setcolumn: sizeofvector should be same as matrix.");
-  #endif
+#endif
   Type *pntCOL = COLUMN[0];
-  for (register Type *pntB =&data[0][pixel];
-                      pntB<=&data[nrows-1][pixel];
-                      pntB+=ncols)
+  for (Type *pntB = &data[0][pixel];
+       pntB <= &data[nrows - 1][pixel];
+       pntB += ncols) {
     *pntB = *pntCOL++;
+}
   } // END setcolumn
-
-
 
 /****************************************************************
  * B.setcolumn(col, scalar)                                     *
- * cols: 0 1 2 ..                                               *       
+ * cols: 0 1 2 ..                                               *
  #%// BK 25-Sep-2000                                            *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::setcolumn(uint pixel, Type scalar)
   {
-  #ifdef __DEBUGMAT1
-  checkindex(0,pixel);
-  #endif
-  for (register Type *pntB =&data[0][pixel];
-                      pntB<=&data[nrows-1][pixel];
-                      pntB+=ncols)
+#ifdef __DEBUGMAT1
+  checkindex(0, pixel);
+#endif
+  for (Type *pntB = &data[0][pixel];
+       pntB <= &data[nrows - 1][pixel];
+       pntB += ncols) {
     *pntB = scalar;
+}
   } // END setcolumn
-
-
 
 /****************************************************************
  * B.fliplr()                                                   *
  * Mirror in center vertical (flip left right).                 *
  *    Bert Kampes, 23-Mar-2000                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::fliplr()
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("fliplr.");
-  #endif
-  if (nrows==1)
+#endif
+  if (nrows == 1)
     {
-    Type *pnt1 =  data[0];                              // first one
-    Type *pnt2 =  data[0]+ncols-1;                      // last one
-    Type tmp   = *pnt1;
-    for (register int32 i=0; i<int32(ncols/2); ++i)     // floor
+    Type *pnt1 = data[0];             // first one
+    Type *pnt2 = data[0] + ncols - 1; // last one
+    Type tmp = *pnt1;
+    for (int32 i = 0; i < int32(ncols / 2); ++i) // floor
       {
       (*pnt1++) = *pnt2;
-      (*pnt2--) =  tmp;
-      tmp       = *pnt1;
+      (*pnt2--) = tmp;
+      tmp = *pnt1;
       }
     }
   else
     {
-    for (register int32 i=0; i<int32(ncols/2); ++i)     // floor
+    for (int32 i = 0; i < int32(ncols / 2); ++i) // floor
       {
       matrix<Type> tmp1 = getcolumn(i);
-      matrix<Type> tmp2 = getcolumn(ncols-i-1);
-      setcolumn(i,tmp2);
-      setcolumn(ncols-i-1,tmp1);
+      matrix<Type> tmp2 = getcolumn(ncols - i - 1);
+      setcolumn(i, tmp2);
+      setcolumn(ncols - i - 1, tmp1);
       }
     }
   } // END fliplr
-
-
 
 /****************************************************************
  * B.flipud()                                                   *
@@ -724,41 +694,35 @@ void matrix<Type>::fliplr()
  *    veclib works ok, data is cont. in memory.                 *
  *    Bert Kampes, 23-Mar-2000                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::flipud()
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("flipud.");
-  #endif
-  if (ncols==1)
+#endif
+  if (ncols == 1)
     {
-    Type *pnt1 =  data[0];                              // first one
-    Type *pnt2 =  data[0]+nrows-1;                      // last one
-    Type tmp   = *pnt1;
-    for (register int32 i=0; i<int32(nrows/2); ++i)     // floor
+    Type *pnt1 = data[0];             // first one
+    Type *pnt2 = data[0] + nrows - 1; // last one
+    Type tmp = *pnt1;
+    for (int32 i = 0; i < int32(nrows / 2); ++i) // floor
       {
       (*pnt1++) = *pnt2;
-      (*pnt2--) =  tmp;
-      tmp       = *pnt1;
+      (*pnt2--) = tmp;
+      tmp = *pnt1;
       }
     }
   else
     {
-    for (register int32 i=0; i<int32(ncols/2); ++i)     // floor
+    for (int32 i = 0; i < int32(ncols / 2); ++i) // floor
       {
       matrix<Type> tmp1 = getrow(i);
-      matrix<Type> tmp2 = getrow(nrows-i-1);
-      setrow(i,tmp2);
-      setrow(nrows-i-1,tmp1);
+      matrix<Type> tmp2 = getrow(nrows - i - 1);
+      setrow(i, tmp2);
+      setrow(nrows - i - 1, tmp1);
       }
     }
   } // END flipud
-
-
-
-
-
-
 
 /****************************************************************
  ****************************************************************
@@ -766,176 +730,183 @@ void matrix<Type>::flipud()
  ****************************************************************
  ****************************************************************/
 
-
-
-
 /****************************************************************
  * a = A[5][2];                                                 *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-inline
-Type* matrix<Type>::operator [] (uint line) const
+template<class Type>
+inline Type *matrix<Type>::operator[](uint line) const
   {
-  #ifdef __DEBUGMAT1
-  checkindex(line,0);
-  #endif
+#ifdef __DEBUGMAT1
+  checkindex(line, 0);
+#endif
   return data[line];
   } // END []
-
-
 
 /****************************************************************
  * a = A(i,j);                                                  *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-inline
-Type& matrix<Type>::operator () (uint line, uint pixel) const
+template<class Type>
+inline Type &matrix<Type>::operator()(uint line, uint pixel) const
   {
-  #ifdef __DEBUGMAT1
-  checkindex(line,pixel);
-  #endif
+#ifdef __DEBUGMAT1
+  checkindex(line, pixel);
+#endif
   return data[line][pixel];
   } // END ()
-
-
 
 /****************************************************************
  * matrix<T> B = A(window);                                     *
  * may not be to efficient cause twice allocation?              *
  * Bert Kampes, 31-Mar-2000                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> matrix<Type>::operator () (const window &win) const
+template<class Type>
+matrix<Type> matrix<Type>::operator()(const window &win) const
   {
-  matrix<Type> Res(win,*this);
+  matrix<Type> Res(win, *this);
   return Res;
   } // END (win)
-
-
 
 /****************************************************************
  * matrix<T> B = A(uint,uint,uint,uint);                        *
  * Bert Kampes, 31-Mar-2000                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> matrix<Type>::operator () (
+template<class Type>
+matrix<Type> matrix<Type>::operator()(
         const uint &l0, const uint &lN,
         const uint &p0, const uint &pN) const
   {
-  const window win(l0,lN,p0,pN);
-  matrix<Type> Res(win,*this);
+  const window win(l0, lN, p0, pN);
+  matrix<Type> Res(win, *this);
   return Res;
   } // END (4 uint)
-
-
 
 /****************************************************************
  *  =                                                           *
  * Bert Kampes, 14-Jan-1999                                     *
  * Mahmut Arikan, 19-May-2009 Null matrix  assignment           *
  ****************************************************************/
-template <class Type>
-matrix<Type>& matrix<Type>::operator = (const matrix<Type>& A)
+template<class Type>
+matrix<Type> &matrix<Type>::operator=(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("operator =");
-  #endif
-  //cerr << "operator =\n";
-  if (this != &A)                               // prevent copy to itself
+#endif
+  // cerr << "operator =\n";
+  if (this != &A) // prevent copy to itself
     {
-    if (A.nsize)                                // if allocated : disable this to return null matrix 
+    if (A.nsize) // if allocated : disable this to return null matrix
       {
-      if (data != 0)                            // if allocated
+      if (data != nullptr) // if allocated
         {
-        #ifdef __DEBUGMAT2
-        uint deallocated  = sizeof(Type)*nsize; // [B]
-        totalallocated   -= deallocated;        // [B]
+#ifdef __DEBUGMAT2
+        uint deallocated = sizeof(Type) * nsize; // [B]
+        totalallocated -= deallocated;           // [B]
         matDEBUG << "deallocated matrix("
-             << nrows << "," << ncols << ") at: " << data[0] << " ("
-             << setw(10) << deallocated << "B; total: "
-             << setw(10) << totalallocated << "B)";
+                 << nrows << "," << ncols << ") at: " << data[0] << " ("
+                 << setw(10) << deallocated << "B; total: "
+                 << setw(10) << totalallocated << "B)";
         matDEBUG.print();
-        #endif
-        delete [] data[0];
-        delete [] data;
-        data = 0;
+#endif
+        delete[] data[0];
+        delete[] data;
+        data = nullptr;
         }
-      allocate(A.nrows,A.ncols);
-      memcpy(data[0],A.data[0],nsize*sizeof(Type));
+      allocate(A.nrows, A.ncols);
+      memcpy(data[0], A.data[0], nsize * sizeof(Type));
       }
     else
-      {                                          // [MA] allow for NULL matrix returns when dynamic memory  nsize =0 
-        cerr << "op =    : NULL matrix is assigned.";
-        allocate(A.nrows,A.ncols);
-        data[0]=0;  // point to no memory block
-       }
+      { // [MA] allow for NULL matrix returns when dynamic memory  nsize =0
+      cerr << "op =    : NULL matrix is assigned.";
+      allocate(A.nrows, A.ncols);
+      data[0] = nullptr; // point to no memory block
+      }
     }
   return *this;
   } // END =
 
+/****************************************************************
+ * operator=(matrix<Type> &&A)                                  *
+ * Move assignment: free own storage, steal A's buffer.         *
+ ****************************************************************/
+template<class Type>
+matrix<Type> &matrix<Type>::operator=(matrix<Type> &&A) noexcept
+  {
+  if (this != &A)
+    {
+    if (data != nullptr)
+      {
+      delete[] data[0];
+      delete[] data;
+      }
+    data    = A.data;
+    nrows   = A.nrows;
+    ncols   = A.ncols;
+    nsize   = A.nsize;
+    A.data  = nullptr;
+    A.nrows = 0;
+    A.ncols = 0;
+    A.nsize = 0;
+    }
+  return *this;
+  } // END move =
 
 /****************************************************************
  *  =                                                           *
  #%// BK 09-Nov-2000                                            *
  ****************************************************************/
-template <class Type>
-matrix<Type>& matrix<Type>::operator = (const Type scalar)
+template<class Type>
+matrix<Type> &matrix<Type>::operator=(const Type scalar)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("operator = (scalar)");
-  #endif
+#endif
   setdata(scalar);
   return *this;
   } // END = (scalar)
-
-
-
 
 /****************************************************************
  * C *= 5.0;                                                    *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>& matrix<Type>::operator *= (Type scalar)
+template<class Type>
+matrix<Type> &matrix<Type>::operator*=(Type scalar)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("*=");
-  #endif
-  #ifdef __DEBUGMAT1
+#endif
+#ifdef __DEBUGMAT1
   if (!nsize)
     matERROR.print("matrix:: *= with empty matrix.");
-  #endif
+#endif
   Type *pntmat = data[0];
-  for (register uint i=0; i<nsize; ++i)
-    (*pntmat++) *= scalar;      
+  for (uint i = 0; i < nsize; ++i) {
+    (*pntmat++) *= scalar;
+}
   return *this;
   } // END *= scalar
-
-
-
 
 /****************************************************************
  * C *= A;      pointwise multiplication, a,c same size         *
  * Bert Kampes, 06-Oct-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>& matrix<Type>::operator *= (const matrix<Type> &A)
+template<class Type>
+matrix<Type> &matrix<Type>::operator*=(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("*= pointwise");
-  #endif
-  #ifdef __DEBUGMAT1
+#endif
+#ifdef __DEBUGMAT1
   if (nrows != A.lines() || ncols != A.pixels())
     matERROR.print("matrix:: *= matrices must be same size.");
-  #endif
+#endif
   Type *pntmat = data[0];
-  Type *pntA   = A[0];
-  //for (register uint i=0; i<nsize; i++)
-  //  (*pntmat++) *= (*pntA++); 
-  // changed by FvL (for g++/gcc > 4.0):
-  for (register uint i=0; i<nsize; i++)
+  Type *pntA = A[0];
+  // for (uint i=0; i<nsize; i++)
+  //   (*pntmat++) *= (*pntA++);
+  //  changed by FvL (for g++/gcc > 4.0):
+  for (uint i = 0; i < nsize; i++)
     {
     (*pntmat++) *= (*pntA);
     *pntA++;
@@ -943,52 +914,47 @@ matrix<Type>& matrix<Type>::operator *= (const matrix<Type> &A)
   return *this;
   } // END *= matrices
 
-
-
-
 /****************************************************************
  * C /= 5.0;                                                    *
  * Bert Kampes, 12-Oct-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>& matrix<Type>::operator /= (Type scalar)
+template<class Type>
+matrix<Type> &matrix<Type>::operator/=(Type scalar)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("/= scalar");
-  #endif
-  #ifdef __DEBUGMAT1
+#endif
+#ifdef __DEBUGMAT1
   if (!nsize)
     matERROR.print("matrix:: /= with empty matrix.");
-  #endif
-    Type *pntmat = data[0];
-    for (register uint i=0; i<nsize; i++)
-      (*pntmat++) /= scalar;    
-    return *this;
+#endif
+  Type *pntmat = data[0];
+  for (uint i = 0; i < nsize; i++) {
+    (*pntmat++) /= scalar;
+}
+  return *this;
   } // END /= scalar
-
-
-
 
 /****************************************************************
  * C /= A;      pointwise division, a,c same size               *
  * Bert Kampes, 06-Oct-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>& matrix<Type>::operator /= (const matrix<Type> &A)
+template<class Type>
+matrix<Type> &matrix<Type>::operator/=(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("/=");
-  #endif
-  #ifdef __DEBUGMAT1
+#endif
+#ifdef __DEBUGMAT1
   if (nrows != A.lines() || ncols != A.pixels())
     matERROR.print("matrix:: /= matrices must be same size.");
-  #endif
+#endif
   Type *pntmat = data[0];
-  Type *pntA   = A[0];
-  //for (register uint i=0; i<nsize; i++)
-  //  (*pntmat++) /= (*pntA++); 
-  // changed by FvL (for g++/gcc > 4.0):
-  for (register uint i=0; i<nsize; i++)
+  Type *pntA = A[0];
+  // for (uint i=0; i<nsize; i++)
+  //   (*pntmat++) /= (*pntA++);
+  //  changed by FvL (for g++/gcc > 4.0):
+  for (uint i = 0; i < nsize; i++)
     {
     (*pntmat++) /= (*pntA);
     *pntA++;
@@ -996,85 +962,79 @@ matrix<Type>& matrix<Type>::operator /= (const matrix<Type> &A)
   return *this;
   } // END /= matrices
 
-
-
 /****************************************************************
  * C -= A;                                                      *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>& matrix<Type>::operator -= (const matrix<Type>& A)
+template<class Type>
+matrix<Type> &matrix<Type>::operator-=(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("-= mat");
-  #endif
-  #ifdef __DEBUGMAT1
+#endif
+#ifdef __DEBUGMAT1
   if (nrows != A.nrows || ncols != A.ncols)
     matERROR.print("error dimensions.");
   if (!A.nsize)
     matERROR.print("matrix:: -= with empty matrices.");
-  #endif
+#endif
   Type *pntmat = data[0];
-  Type *pntA   = A.data[0];
-  //for (register uint i=0; i<nsize; i++)
-  //  (*pntmat++) -= (*pntA++); 
-  // changed by FvL (for g++/gcc > 4.0):
-  for (register uint i=0; i<nsize; i++)
+  Type *pntA = A.data[0];
+  // for (uint i=0; i<nsize; i++)
+  //   (*pntmat++) -= (*pntA++);
+  //  changed by FvL (for g++/gcc > 4.0):
+  for (uint i = 0; i < nsize; i++)
     {
-    (*pntmat++) -= (*pntA);     
+    (*pntmat++) -= (*pntA);
     *pntA++;
     }
   return *this;
   } // END -=
 
-
-
 /****************************************************************
  * C -= 5.0;                                                    *
  * Bert Kampes, 26-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>& matrix<Type>::operator -= (Type scalar)
+template<class Type>
+matrix<Type> &matrix<Type>::operator-=(Type scalar)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("-= scalar");
-  #endif
-  #ifdef __DEBUGMAT1
+#endif
+#ifdef __DEBUGMAT1
   if (!nsize)
     matERROR.print("matrix:: -= with empty matrix.");
-  #endif
+#endif
   Type *pntmat = data[0];
-  for (register uint i=0; i<nsize; i++)
-    (*pntmat++) -= scalar;      
+  for (uint i = 0; i < nsize; i++) {
+    (*pntmat++) -= scalar;
+}
   return *this;
   } // END -= scalar
-
-
-
 
 /****************************************************************
  * C += A;                                                      *
  * Bert Kampes, 14-Jan-1999                                     *
  #%// Bert Kampes, 10-Apr-2005  (why const?)
  ****************************************************************/
-template <class Type>
-matrix<Type>& matrix<Type>::operator += (const matrix<Type>& A)
+template<class Type>
+matrix<Type> &matrix<Type>::operator+=(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("+=");
-  #endif
-  #ifdef __DEBUGMAT1
+#endif
+#ifdef __DEBUGMAT1
   if (nrows != A.nrows || ncols != A.ncols)
     matERROR.print("error dimensions.");
   if (!A.nsize)
     matERROR.print("matrix:: += with empty matrices.");
-  #endif
+#endif
   Type *pntmat = data[0];
-  Type *pntA   = A.data[0];
-  //for (register uint i=0; i<nsize; i++)
-  //  (*pntmat++) += (*pntA++); 
-  // changed by FvL (for g++/gcc > 4.0):
-  for (register uint i=0; i<nsize; i++)
+  Type *pntA = A.data[0];
+  // for (uint i=0; i<nsize; i++)
+  //   (*pntmat++) += (*pntA++);
+  //  changed by FvL (for g++/gcc > 4.0):
+  for (uint i = 0; i < nsize; i++)
     {
     (*pntmat++) += (*pntA);
     *pntA++;
@@ -1082,66 +1042,61 @@ matrix<Type>& matrix<Type>::operator += (const matrix<Type>& A)
   return *this;
   } // END +=
 
-
-
-
 /****************************************************************
  * C += 5.0;                                                    *
  * Bert Kampes, 26-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>& matrix<Type>::operator += (Type scalar)
+template<class Type>
+matrix<Type> &matrix<Type>::operator+=(Type scalar)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("+= scalar");
-  #endif
-  #ifdef __DEBUGMAT1
+#endif
+#ifdef __DEBUGMAT1
   if (!nsize)
     matERROR.print("matrix:: += with empty matrix.");
-  #endif
+#endif
   Type *pntmat = data[0];
-  for (register uint i=0; i<nsize; i++)
-    (*pntmat++) += scalar;      
+  for (uint i = 0; i < nsize; i++) {
+    (*pntmat++) += scalar;
+}
   return *this;
   } // END += scalar
-
-
 
 /****************************************************************
  * A.conj();complex conjugated                                  *
  * Bert Kampes, 18-Oct-1999                                     *
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::conj()
   {
-  #ifdef __DEBUGMAT2
-  matDEBUG.print("conj"); 
-  #endif
+#ifdef __DEBUGMAT2
+  matDEBUG.print("conj");
+#endif
   Type *pntmat = data[0];
-  for (register uint i=0; i<nsize; ++i)
+  for (uint i = 0; i < nsize; ++i)
     {
     (*pntmat) = Type((*pntmat).real(), -(*pntmat).imag());
     pntmat++;
     }
   } // END conj()
 
-
-
 /****************************************************************
  * if (A==scalar) all elements equal scalar                     *
  * Bert Kampes, 08-Oct-1999                                     *
  ****************************************************************/
-template <class Type>
-bool matrix<Type>::operator == (Type scalar) const
+template<class Type>
+bool matrix<Type>::operator==(Type scalar) const
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("== (scalar)");
-  #endif
-  if (nsize == 0)
+#endif
+  if (nsize == 0) {
     return false;
+}
   bool same = true;
   Type *pnt = data[0];
-  for (register int32 i=0; i<nsize; ++i)
+  for (int32 i = 0; i < nsize; ++i)
     {
     if ((*pnt) != scalar)
       {
@@ -1152,24 +1107,23 @@ bool matrix<Type>::operator == (Type scalar) const
   return same;
   } // END ==
 
-
-
 /****************************************************************
  * if (A==B)                                                    *
  * Bert Kampes, 08-Oct-1999                                     *
  ****************************************************************/
-template <class Type>
-bool matrix<Type>::operator == (const matrix<Type> &A) const
+template<class Type>
+bool matrix<Type>::operator==(const matrix<Type> &A) const
   {
 #ifdef __DEBUGMAT2
   matDEBUG.print("==");
 #endif
-  if ((A.lines() != nrows) || (A.pixels() != ncols))
+  if ((A.lines() != nrows) || (A.pixels() != ncols)) {
     return false;
-  bool same  = true;
-  Type *pnt  = data[0];
+}
+  bool same = true;
+  Type *pnt = data[0];
   Type *pntA = A[0];
-  for (register uint i=0; i<nsize; ++i)
+  for (uint i = 0; i < nsize; ++i)
     {
     if ((*pnt) != (*pntA))
       {
@@ -1180,44 +1134,39 @@ bool matrix<Type>::operator == (const matrix<Type> &A) const
   return same;
   } // END ==
 
-
-
 /****************************************************************
  * if (A!=scalar)                                               *
  * Bert Kampes, 08-Oct-1999                                     *
  ****************************************************************/
-template <class Type>
-bool matrix<Type>::operator != (Type scalar) const
+template<class Type>
+bool matrix<Type>::operator!=(Type scalar) const
   {
 #ifdef __DEBUGMAT2
   matDEBUG.print("!= (scalar)");
 #endif
-  if (*this == scalar)
+  if (*this == scalar) {
     return false;
-  else
+  } else {
     return true;
+}
   } // END !=
-
-
 
 /****************************************************************
  * if (A!=B)                                                    *
  * Bert Kampes, 08-Oct-1999                                     *
  ****************************************************************/
-template <class Type>
-bool matrix<Type>::operator != (const matrix<Type> &A) const
+template<class Type>
+bool matrix<Type>::operator!=(const matrix<Type> &A) const
   {
 #ifdef __DEBUGMAT2
   matDEBUG.print("!=");
 #endif
-  if (*this == A)
+  if (*this == A) {
     return false;
-  else
+  } else {
     return true;
+}
   } // END !=
-
-
-
 
 // ++++++++++++++++++++++++++
 // template functions, stupid place, but else not found?
@@ -1228,522 +1177,495 @@ bool matrix<Type>::operator != (const matrix<Type> &A) const
  * C = A * B;                                                   *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> operator * (const matrix<Type>& A, const matrix<Type>& B)
+template<class Type>
+matrix<Type> operator*(const matrix<Type> &A, const matrix<Type> &B)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("matrices * (no veclib)");
-  #endif
-  #ifdef __DEBUGMAT1
+#endif
+#ifdef __DEBUGMAT1
   if (A.pixels() != B.lines())
     matERROR.print("matrix::operator *: multiplication not possible");
   if (!A.size())
     matERROR.print("matrix:: operator * with empty matrices.");
-  #endif
+#endif
   // ______ Straightforward, no veclib _____
   // ______ it is probably worth to make this faster, e.g.,
   // ______ using pointers (using A[i][j] is same speed)
   // ______ and not initializing Result
-  matrix<Type>  Result(A.lines(),B.pixels());
-  register Type sum = Type(0.0);
-  // --- use straightforward notation for slow matrix access --------
-  #define NO_POINTERS // this is likely a bit slower
-  #ifdef NO_POINTERS // straightforward notation
-  for (register uint i=0; i<Result.lines(); i++) 
+  matrix<Type> Result(A.lines(), B.pixels());
+  Type sum = Type(0.0);
+// --- use straightforward notation for slow matrix access --------
+#define NO_POINTERS // this is likely a bit slower
+#ifdef NO_POINTERS  // straightforward notation
+  for (uint i = 0; i < Result.lines(); i++)
     {
-    for (register uint j=0; j<Result.pixels(); j++) 
+    for (uint j = 0; j < Result.pixels(); j++)
       {
-      for (register uint k=0; k<A.pixels(); k++) 
+      for (uint k = 0; k < A.pixels(); k++)
         {
-        sum += A(i,k) * B(k,j); 
+        sum += A(i, k) * B(k, j);
         }
-      Result(i,j) = sum; 
-      sum         = Type(0.0);// complex requires this
+      Result(i, j) = sum;
+      sum = Type(0.0); // complex requires this
       }
     }
-  // --- use pointers for faster matrix access --------------------
-  // Bert Kampes, 13-Oct-2005: tested OK.
-  #else  // use pointers for faster matrix access
-  Type *pntR = Result[0];// use to point from first to last element 
-  for (register uint i=0; i<Result.lines(); i++) 
+// --- use pointers for faster matrix access --------------------
+// Bert Kampes, 13-Oct-2005: tested OK.
+#else // use pointers for faster matrix access
+  Type *pntR = Result[0]; // use to point from first to last element
+  for (uint i = 0; i < Result.lines(); i++)
     {
-    for (register uint j=0; j<Result.pixels(); j++) 
+    for (uint j = 0; j < Result.pixels(); j++)
       {
-      Type *pntA = A[i];// point to first element this row of A
-      Type *pntB = B[0]+j;// point to first element in column of B
-      for (register uint k=0; k<A.pixels(); k++) 
+      Type *pntA = A[i];     // point to first element this row of A
+      Type *pntB = B[0] + j; // point to first element in column of B
+      for (uint k = 0; k < A.pixels(); k++)
         {
-        //sum  += (*pntA++) * (*pntB); // pointer over row A
-        // changed by FvL (for g++/gcc > 4.0):
-        sum  += (*pntA) * (*pntB); // pointer over row A
+        // sum  += (*pntA++) * (*pntB); // pointer over row A
+        //  changed by FvL (for g++/gcc > 4.0):
+        sum += (*pntA) * (*pntB); // pointer over row A
         *pntA++;
-        pntB += B.pixels();// point to next element in this column of B
+        pntB += B.pixels(); // point to next element in this column of B
         }
-      (*pntR++) = sum;// matrix is linear in memory, major-row
-      sum       = Type(0.0);// complex requires this
+      (*pntR++) = sum; // matrix is linear in memory, major-row
+      sum = Type(0.0); // complex requires this
       }
     }
-  #endif
-  return Result; 
+#endif
+  return Result;
   } // END *
-
-
 
 /****************************************************************
  * C = 5.0 * B;                                                 *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> operator * (const matrix<Type>& A, Type scalar)
+template<class Type>
+matrix<Type> operator*(const matrix<Type> &A, Type scalar)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("scalar *");
-  #endif
+#endif
   // ______Perform multiplication______
-  matrix<Type>  Result=A;
-  return Result *= scalar;              // checks in *=
+  matrix<Type> Result = A;
+  return Result *= scalar; // checks in *=
   } // END * scalar
-
-
 
 /****************************************************************
  * C = B * 5.0;                                                 *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> operator *  (Type  scalar, const matrix<Type> &A)
+template<class Type>
+matrix<Type> operator*(Type scalar, const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("* scalar.");
-  #endif
-  return A*scalar;                      // checks in *=
+#endif
+  return A * scalar; // checks in *=
   } // END scalar *
-
-
 
 /****************************************************************
  * C = A / 5;                                                   *
  * Bert Kampes, 04-Apr-2000                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> operator / (const matrix<Type>& A, Type scalar)
+template<class Type>
+matrix<Type> operator/(const matrix<Type> &A, Type scalar)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("/");
-  #endif
+#endif
   matrix<Type> Result = A;
-  return Result      /= scalar;         // checks are performed here.
+  return Result /= scalar; // checks are performed here.
   } // END /
-
-
 
 /****************************************************************
  * C = A / B;                                                   *
  * Bert Kampes, 04-Apr-2000                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> operator / (const matrix<Type>& A, const matrix<Type>& B)
+template<class Type>
+matrix<Type> operator/(const matrix<Type> &A, const matrix<Type> &B)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("/");
-  #endif
+#endif
   matrix<Type> Result = A;
-  return Result      /= B;      // checks are performed here.
+  return Result /= B; // checks are performed here.
   } // END /
-
-
 
 /****************************************************************
  * C = A - B;                                                   *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> operator - (const matrix<Type>& A, const matrix<Type>& B)
+template<class Type>
+matrix<Type> operator-(const matrix<Type> &A, const matrix<Type> &B)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("-");
-  #endif
+#endif
   matrix<Type> Result = A;
-  return Result      -= B;              // checks are performed here.
+  return Result -= B; // checks are performed here.
   } // END - (binary)
-
-
 
 /****************************************************************
  * C = A - 5;                                                   *
  * Bert Kampes, 04-Apr-2000                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> operator - (const matrix<Type>& A, Type scalar)
+template<class Type>
+matrix<Type> operator-(const matrix<Type> &A, Type scalar)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("-");
-  #endif
+#endif
   matrix<Type> Result = A;
-  return Result      -= scalar;         // checks are performed here.
+  return Result -= scalar; // checks are performed here.
   } // END - (binary)
-
-
 
 /****************************************************************
  * C = A + B;                                                   *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> operator + (const matrix<Type>& A, const matrix<Type>& B)
+template<class Type>
+matrix<Type> operator+(const matrix<Type> &A, const matrix<Type> &B)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("+");
-  #endif
+#endif
   matrix<Type> Result = B;
-  return Result      += A;              // checks are in +=
+  return Result += A; // checks are in +=
   } // END + (binary)
-
-
 
 /****************************************************************
  * C = A + 5;                                                   *
  * Bert Kampes, 04-Apr-2000                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type> operator + (const matrix<Type>& A, Type scalar)
+template<class Type>
+matrix<Type> operator+(const matrix<Type> &A, Type scalar)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("+");
-  #endif
+#endif
   matrix<Type> Result = A;
-  return Result      += scalar;          // checks are performed here.
+  return Result += scalar; // checks are performed here.
   } // END + (binary)
-
-
 
 /****************************************************************
  * a = max(A)                                                   *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
+template<class Type>
 Type max(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("max");
-  #endif
-  Type m=A(0,0);
-  for (register uint i=0; i<A.lines(); ++i)
-    for (register uint j=0; j<A.pixels(); ++j)
-      if (A(i,j)>m) m=A(i,j);
-  return m;     
+#endif
+  Type m = A(0, 0);
+  for (uint i = 0; i < A.lines(); ++i) {
+    for (uint j = 0; j < A.pixels(); ++j) {
+      if (A(i, j) > m) {
+        m = A(i, j);
+}
+}
+}
+  return m;
   } // END max
-
-
 
 /****************************************************************
  * a = max(A,linemax,pixelmax)                                  *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-Type max(const matrix<Type> &A, uint& line, uint& pixel)
+template<class Type>
+Type max(const matrix<Type> &A, uint &line, uint &pixel)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("max");
-  #endif
-  Type m=A(0,0);
-  for (register uint i=0; i<A.lines(); ++i)
-    for (register uint j=0; j<A.pixels(); ++j)
-      if (A(i,j)>=m)
+#endif
+  Type m = A(0, 0);
+  for (uint i = 0; i < A.lines(); ++i) {
+    for (uint j = 0; j < A.pixels(); ++j) {
+      if (A(i, j) >= m)
         {
-        m     = A(i,j);
-        line  = i;
+        m = A(i, j);
+        line = i;
         pixel = j;
         }
-  return m;     
+}
+}
+  return m;
   } // END max
-
-
 
 /****************************************************************
  * a = min(A)                                                   *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
+template<class Type>
 Type min(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("min");
-  #endif
-  Type m=A(0,0);
-  for (register uint i=0; i<A.lines(); ++i)
-    for (register uint j=0; j<A.pixels(); ++j)
-      if (A(i,j)<m) m=A(i,j);
-  return m;     
+#endif
+  Type m = A(0, 0);
+  for (uint i = 0; i < A.lines(); ++i) {
+    for (uint j = 0; j < A.pixels(); ++j) {
+      if (A(i, j) < m) {
+        m = A(i, j);
+}
+}
+}
+  return m;
   } // END min
-
-
 
 /****************************************************************
  * a = min(A,linemax,pixelmax)                                  *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-Type min(const matrix<Type> &A, uint& line, uint& pixel)
+template<class Type>
+Type min(const matrix<Type> &A, uint &line, uint &pixel)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("min");
-  #endif
-  Type m=A(0,0);
-  for (register int32 i=0; i<A.lines(); i++)
-    for (register int32 j=0; j<A.pixels(); j++)
-      if (A(i,j)<=m) 
+#endif
+  Type m = A(0, 0);
+  for (int32 i = 0; i < A.lines(); i++) {
+    for (int32 j = 0; j < A.pixels(); j++) {
+      if (A(i, j) <= m)
         {
-        m     = A(i,j);
-        line  = i;
+        m = A(i, j);
+        line = i;
         pixel = j;
         }
-  return m;     
+}
+}
+  return m;
   } // END min
-
-
 
 /****************************************************************
  * C=matTxmat(A,B) C=trans(A)*B; specialized for veclib         *
  *    Bert Kampes, 22-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 matrix<Type> matTxmat(const matrix<Type> &A, const matrix<Type> &B)
   {
-  #ifdef __DEBUGMAT2
-    matDEBUG.print("matTxmat: no veclib");
-  #endif
-  #ifdef __DEBUGMAT1
+#ifdef __DEBUGMAT2
+  matDEBUG.print("matTxmat: no veclib");
+#endif
+#ifdef __DEBUGMAT1
   if (A.lines() != B.lines())
     matERROR.print("matTxmat: size A,B: input is A,B; computed is trans(A)*B.");
-  #endif
-  matrix<Type> Result(A.pixels(),B.pixels());
-  register Type sum = Type(0.0);
-  // --- use straightforward notation for slow matrix access --------
-  #define NO_POINTERS // this is likely a bit slower
-  #ifdef NO_POINTERS // straightforward notation
-  for (register uint i=0; i<Result.lines(); i++)
+#endif
+  matrix<Type> Result(A.pixels(), B.pixels());
+  Type sum = Type(0.0);
+// --- use straightforward notation for slow matrix access --------
+#define NO_POINTERS // this is likely a bit slower
+#ifdef NO_POINTERS  // straightforward notation
+  for (uint i = 0; i < Result.lines(); i++)
     {
-    for (register uint j=0; j<Result.pixels(); j++)
+    for (uint j = 0; j < Result.pixels(); j++)
       {
-      for (register uint k=0; k<A.lines(); k++)
+      for (uint k = 0; k < A.lines(); k++)
         {
-        sum += A(k,i) * B(k,j);
+        sum += A(k, i) * B(k, j);
         }
-      Result(i,j) = sum;
-      sum         = Type(0.0);
+      Result(i, j) = sum;
+      sum = Type(0.0);
       }
     }
-  // --- use pointers for faster matrix access --------------------
-  #else
-  Type *pntR = Result[0];// use to point from first to last element 
-  for (register uint i=0; i<Result.lines(); i++) 
+// --- use pointers for faster matrix access --------------------
+#else
+  Type *pntR = Result[0]; // use to point from first to last element
+  for (uint i = 0; i < Result.lines(); i++)
     {
-    for (register uint j=0; j<Result.pixels(); j++) 
+    for (uint j = 0; j < Result.pixels(); j++)
       {
-      Type *pntA = A[0]+i;// point to first element this row of A
-      Type *pntB = B[0]+j;// point to first element in column of B
-      for (register uint k=0; k<A.lines(); k++) 
+      Type *pntA = A[0] + i; // point to first element this row of A
+      Type *pntB = B[0] + j; // point to first element in column of B
+      for (uint k = 0; k < A.lines(); k++)
         {
-        sum  += (*pntA) * (*pntB); // pointer over row A
+        sum += (*pntA) * (*pntB); // pointer over row A
         pntA += A.pixels();
-        pntB += B.pixels();// point to next element in this column of B
+        pntB += B.pixels(); // point to next element in this column of B
         }
-      (*pntR++) = sum;// matrix is linear in memory, major-row
-      sum       = Type(0.0);// complex requires this
+      (*pntR++) = sum; // matrix is linear in memory, major-row
+      sum = Type(0.0); // complex requires this
       }
     }
-  #endif
+#endif
   return Result;
   } // END matTxmat
-
-
 
 /****************************************************************
  * C=matxmatT(A,B) C=A*trans(B); specialized for veclib         *
  *    Bert Kampes, 22-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
+template<class Type>
 matrix<Type> matxmatT(const matrix<Type> &A, const matrix<Type> &B)
   {
-  #ifdef __DEBUGMAT2
-    matDEBUG.print("matxmatT: no veclib");
-  #endif
-  #ifdef __DEBUGMAT1
+#ifdef __DEBUGMAT2
+  matDEBUG.print("matxmatT: no veclib");
+#endif
+#ifdef __DEBUGMAT1
   if (A.pixels() != B.pixels())
     matERROR.print("matxmatT: size A,B: input is A,B; computed is A*trans(B).");
-  #endif
-  register Type sum = Type(0.0);
-  matrix<Type> Result(A.lines(),B.lines());
-  // --- use straightforward notation for slow matrix access --------
-  #define NO_POINTERS // this is likely a bit slower
-  #ifdef NO_POINTERS // straightforward notation
-  for (register uint i=0; i<Result.lines(); i++)
+#endif
+  Type sum = Type(0.0);
+  matrix<Type> Result(A.lines(), B.lines());
+// --- use straightforward notation for slow matrix access --------
+#define NO_POINTERS // this is likely a bit slower
+#ifdef NO_POINTERS  // straightforward notation
+  for (uint i = 0; i < Result.lines(); i++)
     {
-    for (register uint j=0; j<Result.pixels(); j++)
+    for (uint j = 0; j < Result.pixels(); j++)
       {
-      for (register uint k=0; k<A.pixels(); k++)
+      for (uint k = 0; k < A.pixels(); k++)
         {
-        sum += A(i,k) * B(j,k);
+        sum += A(i, k) * B(j, k);
         }
-      Result(i,j) = sum;
-      sum         = Type(0.0);
+      Result(i, j) = sum;
+      sum = Type(0.0);
       }
     }
-  // --- use pointers for faster matrix access --------------------
-  #else
-  Type *pntR = Result[0];// use to point from first to last element 
-  for (register uint i=0; i<Result.lines(); i++) 
+// --- use pointers for faster matrix access --------------------
+#else
+  Type *pntR = Result[0]; // use to point from first to last element
+  for (uint i = 0; i < Result.lines(); i++)
     {
-    for (register uint j=0; j<Result.pixels(); j++) 
+    for (uint j = 0; j < Result.pixels(); j++)
       {
-      Type *pntA = A[i];// point to first element this row of A
-      Type *pntB = B[j];// point to first element in column of B
-      for (register uint k=0; k<A.pixels(); k++) 
+      Type *pntA = A[i]; // point to first element this row of A
+      Type *pntB = B[j]; // point to first element in column of B
+      for (uint k = 0; k < A.pixels(); k++)
         {
-        //sum  += (*pntA++) * (*pntB++); // pointer over row A
-        // changed by FvL (for g++/gcc > 4.0):
-        sum  += (*pntA) * (*pntB); // pointer over row A
+        // sum  += (*pntA++) * (*pntB++); // pointer over row A
+        //  changed by FvL (for g++/gcc > 4.0):
+        sum += (*pntA) * (*pntB); // pointer over row A
         *pntA++;
         *pntB++;
         }
-      (*pntR++) = sum;// matrix is linear in memory, major-row
-      sum       = Type(0.0);// complex requires this
+      (*pntR++) = sum; // matrix is linear in memory, major-row
+      sum = Type(0.0); // complex requires this
       }
     }
-  #endif
+#endif
   return Result;
   } // END matxmatT
-
-
 
 /****************************************************************
  * dumpasc(file,A);                                             *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-void dumpasc(const char *file, const matrix<Type>& A)
+template<class Type>
+void dumpasc(const char *file, const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("dumpasc to file");
-  #endif
-  ofstream fo(file,ios::out | ios::trunc);
-  matassert(fo,file,__FILE__,__LINE__);
+#endif
+  ofstream fo(file, ios::out | ios::trunc);
+  matassert(fo, file, __FILE__, __LINE__);
   fo.precision(3);
   fo.width(11);
   fo.setf(ios::fixed);
-  for (register int32 i=0; i<A.lines(); ++i)
+  for (int32 i = 0; i < A.lines(); ++i)
     {
-    for (register int32 j=0; j<A.pixels(); ++j)
+    for (int32 j = 0; j < A.pixels(); ++j)
       {
-      fo << A(i,j) << " ";
+      fo << A(i, j) << " ";
       }
     fo << endl;
     }
   fo.close();
   } // END dumpasc
 
-
-
-
 /****************************************************************
  * C = dotmult(A,B) = A .* B                                    *
  * Bert Kampes, 26-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>  dotmult     (const matrix<Type> &A, const matrix<Type> &B)
+template<class Type>
+matrix<Type> dotmult(const matrix<Type> &A, const matrix<Type> &B)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("dotmult");
-  #endif
+#endif
   matrix<Type> Result = A;
-  Result             *= B;                      // checks are here
+  Result *= B; // checks are here
   return Result;
   } // END dotmult
-
-
 
 /****************************************************************
  * C = dotdiv(A,B) = A/B                                        *
  * Bert Kampes, 26-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>  dotdiv      (const matrix<Type> &A, const matrix<Type> &B)
+template<class Type>
+matrix<Type> dotdiv(const matrix<Type> &A, const matrix<Type> &B)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("dotdiv");
-  #endif
+#endif
   matrix<Type> Result = A;
-  Result             /= B;                      // checks are here
+  Result /= B; // checks are here
   return Result;
   } // END dotdiv
-
-
 
 /****************************************************************
  * A = sqr(B)                                                   *
  * Bert Kampes, 16-Feb-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>  sqr         (const matrix<Type> &A)
+template<class Type>
+matrix<Type> sqr(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("sqr");
-  #endif
-  matrix<Type> Result = dotmult(A,A);
+#endif
+  matrix<Type> Result = dotmult(A, A);
   return Result;
   } // END sqr
-
-
 
 /****************************************************************
  *    B = conj(A)                                               *
  *    Bert Kampes, 02-Mar-1999                                  *
  ****************************************************************/
-template <class Type>
-matrix<Type> conj       (const matrix<Type> &A)
+template<class Type>
+matrix<Type> conj(const matrix<Type> &A)
   {
   matrix<Type> Result = A;
   Result.conj();
   return Result;
   } // END conj
 
-
-
 /****************************************************************
  * C=diagxmat(vec,B) C=diag(vec) * B;                           *
  *    Bert Kampes, 22-Feb-1999                                  *
  ****************************************************************/
-template <class Type>
-matrix<Type>  diagxmat    (const matrix<Type> &diag, const matrix<Type> &B)
+template<class Type>
+matrix<Type> diagxmat(const matrix<Type> &diag, const matrix<Type> &B)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("diagxmat");
-  #endif
-  #ifdef __DEBUGMAT1
-  if (min(diag.lines(),diag.pixels()) != 1)
+#endif
+#ifdef __DEBUGMAT1
+  if (min(diag.lines(), diag.pixels()) != 1)
     matERROR.print("diagxmat: sizes A,B: diag is vector.");
   if (diag.size() != B.lines())
     matERROR.print("diagxmat: sizes A,B: input is vector, matrix.");
-  #endif
- 
-  matrix<Type> Result=B;
-  if (diag.lines() != 1)        // standing
+#endif
+
+  matrix<Type> Result = B;
+  if (diag.lines() != 1) // standing
     {
-    for (register int32 i=0; i<int32(Result.lines()); i++)
-      for (register int32 j=0; j<int32(Result.pixels()); j++)
-        Result(i,j) *= diag(i,0);
+    for (int32 i = 0; i < int32(Result.lines()); i++) {
+      for (int32 j = 0; j < int32(Result.pixels()); j++) {
+        Result(i, j) *= diag(i, 0);
+}
+}
     }
   else
     {
-    for (register int32 i=0; i<int32(Result.lines()); i++)
-      for (register int32 j=0; j<int32(Result.pixels()); j++)
-        Result(i,j) *= diag(0,i);
+    for (int32 i = 0; i < int32(Result.lines()); i++) {
+      for (int32 j = 0; j < int32(Result.pixels()); j++) {
+        Result(i, j) *= diag(0, i);
+}
+}
     }
   return Result;
   } // END diagxmat
-
-
 
 /****************************************************************
  * multilook A with factors l,p                                 *
@@ -1752,129 +1674,127 @@ matrix<Type>  diagxmat    (const matrix<Type> &diag, const matrix<Type> &B)
  *  multilooked is averaged by factorLP.                        *
  * Bert Kampes, 19-Apr-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>  multilook   (const matrix<Type> &A, uint factorL, uint factorP)
+template<class Type>
+matrix<Type> multilook(const matrix<Type> &A, uint factorL, uint factorP)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("multilook.");
-    if (A.lines()%factorL)                                 // [MA] we can handle this 
-      //matERROR.print("lines A must be multiple of factorL.");
-      matDEBUG.print("For this buffer, lines A is not multiple of factorL.");
-  #endif
+  if (A.lines() % factorL) // [MA] we can handle this
+    // matERROR.print("lines A must be multiple of factorL.");
+    matDEBUG.print("For this buffer, lines A is not multiple of factorL.");
+#endif
 
-  if (factorL==1 && factorP==1)
+  if (factorL == 1 && factorP == 1)
     {
-    //matrix<Type> R=A;
-    //return R;
-    return A;        // [MA]: fastest solution
+    // matrix<Type> R=A;
+    // return R;
+    return A; // [MA]: fastest solution
     }
- 
-  #ifdef __DEBUGMAT2
-    matDEBUG <<  "multilook input [A] size: " << A.size() << " lines: " << A.lines() << " pixels: " << A.pixels()  << " address: " << &A ; // A.[0] can't be printed if 0
-    matDEBUG.print();
-  #endif
 
-  if ( A.lines()/factorL == 0 || A.pixels()/factorP == 0 ) // [MA] fix for extra buffer when lines < mlfactor or ...
+#ifdef __DEBUGMAT2
+  matDEBUG << "multilook input [A] size: " << A.size() << " lines: " << A.lines() << " pixels: " << A.pixels() << " address: " << &A; // A.[0] can't be printed if 0
+  matDEBUG.print();
+#endif
+
+  if (A.lines() / factorL == 0 || A.pixels() / factorP == 0) // [MA] fix for extra buffer when lines < mlfactor or ...
     {
     DEBUG.print("Multilooking was not necessary for this buffer: buffer.lines() < mlL or buffer.pixels < mlP");
     matrix<Type> R; //=A; // see initialize()
-    //R.resize(1,1); // fill with 0 
-    #ifdef __DEBUGMAT2
-      matDEBUG <<  "multilook return [R] size: " << R.size() << " lines: " << R.lines() << " pixels: " << R.pixels() << " address: " << &R << endl;
+// R.resize(1,1); // fill with 0
+#ifdef __DEBUGMAT2
+    matDEBUG << "multilook return [R] size: " << R.size() << " lines: " << R.lines() << " pixels: " << R.pixels() << " address: " << &R << endl;
     matDEBUG.print();
-    #endif
-    return R; // NULL 
+#endif
+    return R; // NULL
     }
- 
+
   Type sum;
   Type factorLP = Type(factorL * factorP);
-  //cerr << "multilook: "<< A.lines()/factorL << " " << A.pixels()/factorP << endl;
-  matrix<Type> Result(A.lines()/factorL,A.pixels()/factorP);
-  for (register uint i=0; i<Result.lines(); i++)
+  // cerr << "multilook: "<< A.lines()/factorL << " " << A.pixels()/factorP << endl;
+  matrix<Type> Result(A.lines() / factorL, A.pixels() / factorP);
+  for (uint i = 0; i < Result.lines(); i++)
     {
-    for (register uint j=0; j<Result.pixels(); j++)
+    for (uint j = 0; j < Result.pixels(); j++)
       {
       sum = Type(0.0);
-      for (register uint k=i*factorL; k<(i+1)*factorL; k++)
+      for (uint k = i * factorL; k < (i + 1) * factorL; k++)
         {
-        for (register uint l=j*factorP; l<(j+1)*factorP; l++)
+        for (uint l = j * factorP; l < (j + 1) * factorP; l++)
           {
-          sum += A(k,l);
+          sum += A(k, l);
           }
         }
-      Result(i,j) = sum/factorLP;
+      Result(i, j) = sum / factorLP;
       }
     }
-  //cerr << "multilook: l,p " << Result.lines() << " " << Result.pixels() << " size " << Result.size() << endl;
+  // cerr << "multilook: l,p " << Result.lines() << " " << Result.pixels() << " size " << Result.size() << endl;
   return Result;
   } // END multilook
-
-
 
 /****************************************************************
  * Correlate A with maskB, return C(sizeA)                      *
  *  egde is set to zero, not pad with zeros                     *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<real4> correlate   (const matrix<Type> &A, matrix<Type> Mask)
+template<class Type>
+matrix<real4> correlate(const matrix<Type> &A, matrix<Type> Mask)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("Correlate.");
   matDEBUG.print("not yet correct for complex?: returns real4");
-  if (Mask.lines()<2 || Mask.pixels()<2)
+  if (Mask.lines() < 2 || Mask.pixels() < 2)
     matERROR.print("very small mask.");
-  #endif
-  #ifdef __DEBUGMAT1
-  if (A.lines()<Mask.lines() || A.pixels()<Mask.pixels())
+#endif
+#ifdef __DEBUGMAT1
+  if (A.lines() < Mask.lines() || A.pixels() < Mask.pixels())
     matERROR.print("matrix input smaller than mask.");
-  #endif
+#endif
 
-  real8 varM = 0.;                                // variance of Mask
-  Mask      -= mean(Mask);
+  real8 varM = 0.; // variance of Mask
+  Mask -= mean(Mask);
   Type *pntMsk = Mask[0];
-  //for (register uint ii=0; ii<Mask.size(); ii++)
-  //  varM += sqr(*pntMsk++);                         // 1/N later
-  // changed by FvL (for g++/gcc > 4.0):
-  for (register uint ii=0; ii<Mask.size(); ii++)
+  // for (uint ii=0; ii<Mask.size(); ii++)
+  //   varM += sqr(*pntMsk++);                         // 1/N later
+  //  changed by FvL (for g++/gcc > 4.0):
+  for (uint ii = 0; ii < Mask.size(); ii++)
     {
-    varM += sqr(*pntMsk);                         // 1/N later
+    varM += sqr(*pntMsk); // 1/N later
     *pntMsk++;
     }
 
-// ______Compute correlation at these points______
-  uint beginl = (Mask.lines()-1)  / 2 ;             // floor
-  uint beginp = (Mask.pixels()-1) / 2 ;             // floor
-  matrix<real4> Result(A.lines(),A.pixels());       // init to 0
+  // ______Compute correlation at these points______
+  uint beginl = (Mask.lines() - 1) / 2;        // floor
+  uint beginp = (Mask.pixels() - 1) / 2;       // floor
+  matrix<real4> Result(A.lines(), A.pixels()); // init to 0
 
-// ______First window of A, updated at end of loop______
-  window winA   (0, Mask.lines()-1, 0, Mask.pixels()-1);
-  window windef (0,0,0,0);// defaults to total Am
+  // ______First window of A, updated at end of loop______
+  window winA(0, Mask.lines() - 1, 0, Mask.pixels() - 1);
+  window windef(0, 0, 0, 0); // defaults to total Am
 
-// ______Correlate part of Result______
-  matrix<Type> Am(Mask.lines(),Mask.pixels());
-  for (register uint i=beginl; i<A.lines()-beginl; i++)
+  // ______Correlate part of Result______
+  matrix<Type> Am(Mask.lines(), Mask.pixels());
+  for (uint i = beginl; i < A.lines() - beginl; i++)
     {
-    for (register uint j=beginp; j<A.pixels()-beginp; j++)
+    for (uint j = beginp; j < A.pixels() - beginp; j++)
       {
-      Am.setdata(windef,A,winA);                // Am no allocs.
-      Am -= mean(Am);                           // center around mean
-      real8 covAM  = 0.;                        // covariance A,Mask
-      real8 varA   = 0.;                        // variance of A(part)
-      Type  *pntM  = Mask[0];
-      Type  *pntAm = Am[0];
-      for (register uint l=0; l<Mask.size(); l++)
+      Am.setdata(windef, A, winA); // Am no allocs.
+      Am -= mean(Am);              // center around mean
+      real8 covAM = 0.;            // covariance A,Mask
+      real8 varA = 0.;             // variance of A(part)
+      Type *pntM = Mask[0];
+      Type *pntAm = Am[0];
+      for (uint l = 0; l < Mask.size(); l++)
         {
-        //covAM += ((*pntM++) * (*pntAm));        // wait for move pnt
-        //varA  += sqr(*pntAm++);                 // pnt ++
-        // changed by FvL (for g++/gcc > 4.0):
-        covAM += ((*pntM) * (*pntAm));        // wait for move pnt
-        varA  += sqr(*pntAm);                 // pnt ++
+        // covAM += ((*pntM++) * (*pntAm));        // wait for move pnt
+        // varA  += sqr(*pntAm++);                 // pnt ++
+        //  changed by FvL (for g++/gcc > 4.0):
+        covAM += ((*pntM) * (*pntAm)); // wait for move pnt
+        varA += sqr(*pntAm);           // pnt ++
         *pntM++;
         *pntAm++;
         }
       // Result(i,j) = covAM / sqrt(varM*varA);
-      Result(i,j) = real4(covAM / sqrt(varM*varA)); // [BO]
+      Result(i, j) = real4(covAM / sqrt(varM * varA)); // [BO]
       winA.pixlo++;
       winA.pixhi++;
       }
@@ -1886,29 +1806,27 @@ matrix<real4> correlate   (const matrix<Type> &A, matrix<Type> Mask)
   return Result;
   } // END correlate
 
-
-
 /****************************************************************
  * C = -A;                                                      *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>  operator - (const matrix<Type>& A)
+template<class Type>
+matrix<Type> operator-(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("operator -");
-  #endif
-  #ifdef __DEBUGMAT1
+#endif
+#ifdef __DEBUGMAT1
   if (!A.size())
     matERROR.print("matrix:: unary minus with empty matrix");
-  #endif
-  matrix<Type> Result(A.lines(),A.pixels());
+#endif
+  matrix<Type> Result(A.lines(), A.pixels());
   Type *pntA = A[0];
   Type *pntR = Result[0];
-  //for (register uint i=0; i<Result.size(); ++i)
-  //  (*pntR++) = -(*pntA++);
-  // changed by FvL (for g++/gcc > 4.0):
-  for (register uint i=0; i<Result.size(); ++i)
+  // for (uint i=0; i<Result.size(); ++i)
+  //   (*pntR++) = -(*pntA++);
+  //  changed by FvL (for g++/gcc > 4.0):
+  for (uint i = 0; i < Result.size(); ++i)
     {
     (*pntR++) = -(*pntA);
     *pntA++;
@@ -1916,33 +1834,29 @@ matrix<Type>  operator - (const matrix<Type>& A)
   return Result;
   } // END - (unary)
 
-
-
 /****************************************************************
  * a = mean(A)                                                  *
  * Bert Kampes, 14-Jan-1999                                     *
  ****************************************************************/
-template <class Type>
-real8         mean        (const matrix<Type> &A)
+template<class Type>
+real8 mean(const matrix<Type> &A)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("mean");
-  #endif
-  real8 sum=0.;
+#endif
+  real8 sum = 0.;
   // ______Ensure stride one memory______
-  Type *pntA   = A[0];
-  //for (register uint i=0; i<A.size(); ++i)
-  //  sum += (*pntA++);
-  // changed by FvL (for g++/gcc > 4.0):
-  for (register uint i=0; i<A.size(); ++i)
+  Type *pntA = A[0];
+  // for (uint i=0; i<A.size(); ++i)
+  //   sum += (*pntA++);
+  //  changed by FvL (for g++/gcc > 4.0):
+  for (uint i = 0; i < A.size(); ++i)
     {
     sum += (*pntA);
     *pntA++;
     }
-  return sum/real8(A.size());
+  return sum / real8(A.size());
   } // END mean
-
-
 
 /****************************************************************
  * matrix<Type> S = sum(A,dim)                                  *
@@ -1952,69 +1866,68 @@ real8         mean        (const matrix<Type> &A)
  *   [4 5 6]                                     [15]           *
  * Bert Kampes, 28-Mar-2000                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>  sum         (const matrix<Type> &A, int32 dim)
+template<class Type>
+matrix<Type> sum(const matrix<Type> &A, int32 dim)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("sum");
-  #endif
+#endif
   Type sum = Type(0);
-  matrix<Type> Res;                             // may be 1x1 ...
+  matrix<Type> Res; // may be 1x1 ...
   if (A.isvector())
     {
-    Res.resize(1,1);
-    Type *pntA   = A[0];
-    //for (uint i=0; i<A.size(); i++)
-    //  sum += (*pntA++);
-    // changed by FvL (for g++/gcc > 4.0):
-    for (uint i=0; i<A.size(); i++)
+    Res.resize(1, 1);
+    Type *pntA = A[0];
+    // for (uint i=0; i<A.size(); i++)
+    //   sum += (*pntA++);
+    //  changed by FvL (for g++/gcc > 4.0):
+    for (uint i = 0; i < A.size(); i++)
       {
       sum += (*pntA);
       *pntA++;
       }
-    Res(0,0) = sum;
+    Res(0, 0) = sum;
     }
   else // no vector
     {
     switch (dim)
       {
-      // ______ sum over rows ______
-      case 1:
+    // ______ sum over rows ______
+    case 1:
+      {
+      Res.resize(1, A.pixels());
+      for (uint i = 0; i < A.pixels(); ++i)
         {
-        Res.resize(1,A.pixels());
-        for (uint i=0; i<A.pixels(); ++i)
+        for (uint j = 0; j < A.lines(); ++j)
           {
-          for (uint j=0; j<A.lines(); ++j)
-            {
-            sum += A(j,i);
-            }
-          Res(0,i) = sum;
-          sum = Type(0);
+          sum += A(j, i);
           }
+        Res(0, i) = sum;
+        sum = Type(0);
         }
-        break;
-      // ______ sum over columns, may be done by pointers for speed ______
-      case 2:
+      }
+      break;
+    // ______ sum over columns, may be done by pointers for speed ______
+    case 2:
+      {
+      Res.resize(A.lines(), 1);
+      for (uint i = 0; i < A.lines(); ++i)
         {
-        Res.resize(A.lines(),1);
-        for (uint i=0; i<A.lines(); ++i)
+        for (uint j = 0; j < A.pixels(); ++j)
           {
-          for (uint j=0; j<A.pixels(); ++j)
-            {
-            sum += A(i,j);
-            }
-          Res(i,0) = sum;
-          sum = Type(0);
+          sum += A(i, j);
           }
+        Res(i, 0) = sum;
+        sum = Type(0);
         }
-        break;
-      default: matERROR.print("sum: dim!={1,2}");
+      }
+      break;
+    default:
+      matERROR.print("sum: dim!={1,2}");
       }
     } // ifelse vector
   return Res;
   } // END sum
-
-
 
 /****************************************************************
  * A.mypow(scalar)                                              *
@@ -2023,137 +1936,146 @@ matrix<Type>  sum         (const matrix<Type> &A, int32 dim)
  * always returns a matrix, not very handy...                   *
  #%// BK 26-Oct-2000
  ****************************************************************/
-template <class Type>
+template<class Type>
 void matrix<Type>::mypow(Type s)
   {
-  for (register uint i=0; i<nrows; ++i)
-    for (register uint j=0; j<ncols; ++j)
-      data[i][j] = pow(data[i][j],s);
+  for (uint i = 0; i < nrows; ++i) {
+    for (uint j = 0; j < ncols; ++j) {
+      data[i][j] = pow(data[i][j], s);
+}
+}
   } // END sum
-
 
 /****************************************************************
  * convert matrix A to type of matrix B                         *
  * Mahmut Arikan, 07-Jun-2009                                   *
  * TODO convert_type whole stuff should goto operator = one day.*
  ****************************************************************/
-template <class Type, class Type2>
-void  convert_type   (const matrix<Type> &A, const matrix<Type2> &B)
+template<class Type, class Type2>
+void convert_type(const matrix<Type> &A, const matrix<Type2> &B)
   {
   TRACE_FUNCTION("convert_type(matrix<Type>A-->matrix<Type2>B) (MA 07-Jun-2009)")
-//  #ifdef __DEBUGMAT2
-//    matDEBUG.print("convert_type(A-->B).");
-//  #endif
+  //  #ifdef __DEBUGMAT2
+  //    matDEBUG.print("convert_type(A-->B).");
+  //  #endif
 
-  Type             *pntA = A[0];
-  Type2            *pntB = B[0];
+  Type *pntA = A[0];
+  Type2 *pntB = B[0];
 
-  if ( A.lines()!=B.lines() || A.pixels()!=B.pixels() )
+  if (A.lines() != B.lines() || A.pixels() != B.pixels())
     {
     DEBUG.print("convert_type aborted since the number of lines or/and pixels of the matrices are not equal.");
     return;
     }
-  else if (  A.lines()==0 || A.pixels() == 0 )
+  else if (A.lines() == 0 || A.pixels() == 0)
     {
     DEBUG.print("convert_type aborted since the number of lines or/and pixels of the input matrix is 0.");
     return;
     }
 
-  //if ( sizeof(Type) == sizeof(Type2) )
-  if ( getformat(*pntA) == getformat(*pntB) )
+  // if ( sizeof(Type) == sizeof(Type2) )
+  if (getformat(*pntA) == getformat(*pntB))
     {
-    cerr << "==| convert_type input and output types are the same types" << "==| "  << getformat(*pntA) << " to "  << getformat(*pntB) << endl;
+    cerr << "==| convert_type input and output types are the same types" << "==| " << getformat(*pntA) << " to " << getformat(*pntB) << endl;
     DEBUG.print("convert_type was not necessary since both input and output types are the same.");
-    memcpy(pntB,pntA,A.size()*sizeof(Type));
+    memcpy(pntB, pntA, A.size() * sizeof(Type));
     return;
     }
 
-  for (register uint32 i=0; i<A.size(); i++)
+  for (uint32 i = 0; i < A.size(); i++)
     {
-      *pntB = Type2( *pntA ); // less ambiguous
-       pntB++; 
-       pntA++;
+    *pntB = Type2(*pntA); // less ambiguous
+    pntB++;
+    pntA++;
     }
 
   } // END convert_type
-
-
 
 /****************************************************************
  * shift A with factors l,p                                     *
  * R. Natsuaki, 11-Jun-2014                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>  matshift   (const matrix<Type> &A, int32 factorL, int32 factorP)
+template<class Type>
+matrix<Type> matshift(const matrix<Type> &A, int32 factorL, int32 factorP)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("matrix shift.");
-  #endif
+#endif
 
-  if (factorL==0 && factorP==0)
-	  return A; 	//in case of no shift
-  int32 l=int32(A.lines());
-  int32 p=int32(A.pixels());
-  if (factorL>l || factorL< -l)
-	  factorL%=l;
-  if (factorP>p || factorP< -p)
-	  factorP%=p;
-  int32 shiftl,shiftp;
-  matrix<Type> Result=A;
-  for (uint i=0; i<l; i++)
-  {
-	  for (uint j=0; j<p; j++)
-	  {
-		  shiftl=i-factorL;
-		  if (shiftl<0)
-			  shiftl+=l;
-		  if (shiftl>l-1)
-			  shiftl-=l;
-		  shiftp=j-factorP;
-		  if (shiftp<0)
-			  shiftp+=p;
-		  if (shiftp>p-1)
-			  shiftp-=p;
-		  Result(i,j)=A(uint(shiftl),uint(shiftp));
-	  }
-  }
+  if (factorL == 0 && factorP == 0) {
+    return A; // in case of no shift
+}
+  int32 l = int32(A.lines());
+  int32 p = int32(A.pixels());
+  if (factorL > l || factorL < -l) {
+    factorL %= l;
+}
+  if (factorP > p || factorP < -p) {
+    factorP %= p;
+}
+  int32 shiftl = 0, shiftp = 0;
+  matrix<Type> Result = A;
+  for (uint i = 0; i < l; i++)
+    {
+    for (uint j = 0; j < p; j++)
+      {
+      shiftl = i - factorL;
+      if (shiftl < 0) {
+        shiftl += l;
+}
+      if (shiftl > l - 1) {
+        shiftl -= l;
+}
+      shiftp = j - factorP;
+      if (shiftp < 0) {
+        shiftp += p;
+}
+      if (shiftp > p - 1) {
+        shiftp -= p;
+}
+      Result(i, j) = A(uint(shiftl), uint(shiftp));
+      }
+    }
   return Result;
   } // END matshift
-
 
 /****************************************************************
  * convolute filter                                             *
  * R. Natsuaki, 20-Aug-2014                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>  convflt (const matrix<Type> &A, const matrix<Type> &B)
+template<class Type>
+matrix<Type> convflt(const matrix<Type> &A, const matrix<Type> &B)
   {
-  #ifdef __DEBUGMAT2
+#ifdef __DEBUGMAT2
   matDEBUG.print("matrix convolution");
-  #endif
-  int32 lB =int32(B.lines());
-  int32 pB =int32(B.pixels());
-  if (lB%2==0 || pB%2==0)
-	  matERROR.print("filter is not odd");
-  int32 l=int32(A.lines())-lB+1;
-  int32 p=int32(A.pixels())-pB+1;
-  if (l<1 || p<1)
-	  matERROR.print("filter is larger than original");
-  int32 shiftl,shiftp;
-  matrix<Type> Result(l,p);
-  for (uint i=0; i<l; i++)
-  {
-	  for (uint j=0; j<p; j++)
-	  {
-		  window msktmp(i,i+lB-1,j,j+pB-1);
-		  matrix<Type> mattmp =A.getdata(msktmp) * B;
-		  Type X=0.0;
-		  for (uint g=0; g<lB; g++)
-			  for (uint h=0; h<pB; h++)
-				  X+=mattmp(g,h);
-		  Result(i,j)=X;
-	  }
-  }
+#endif
+  int32 lB = int32(B.lines());
+  int32 pB = int32(B.pixels());
+  if (lB % 2 == 0 || pB % 2 == 0) {
+    matERROR.print("filter is not odd");
+}
+  int32 l = int32(A.lines()) - lB + 1;
+  int32 p = int32(A.pixels()) - pB + 1;
+  if (l < 1 || p < 1) {
+    matERROR.print("filter is larger than original");
+}
+  int32 shiftl = 0, shiftp = 0;
+  matrix<Type> Result(l, p);
+  for (uint i = 0; i < l; i++)
+    {
+    for (uint j = 0; j < p; j++)
+      {
+      window msktmp(i, i + lB - 1, j, j + pB - 1);
+      matrix<Type> mattmp = A.getdata(msktmp) * B;
+      Type X = 0.0;
+      for (uint g = 0; g < lB; g++) {
+        for (uint h = 0; h < pB; h++) {
+          X += mattmp(g, h);
+}
+}
+      Result(i, j) = X;
+      }
+    }
   return Result;
   } // END fltconv
 
@@ -2161,22 +2083,20 @@ matrix<Type>  convflt (const matrix<Type> &A, const matrix<Type> &B)
  * make lanczos filter                                          *
  * R. Natsuaki, 20-Aug-2014                                     *
  ****************************************************************/
-template <class Type>
-matrix<Type>  mklanczmsk  (const Type &R,  real4 B, real4 C)
+template<class Type>
+matrix<Type> mklanczmsk(const Type &R, real4 B, real4 C)
   {
-	real4 A = abs(R);
-	int32 resl=int32(A*2 +1);
-    real4 ctp = A/(pow(PI,2.0));
-	matrix<Type> Result(resl,resl);
-	for (register uint i = 0; i<resl; i++)
-	{
-		for (register uint j = 0; j<resl; j++)
-		{
-			real4 r = sqrt(pow(A-real4(i)+B,2.0) + pow(A-real4(j)+C,2.0));
-			Result(i,j)=complr4(ctp*sin(PI*r)*sin(PI*r/A)/(pow(r,2.0)));
-		}
-	}
-	return Result;
+  real4 A = abs(R);
+  int32 resl = int32(A * 2 + 1);
+  real4 ctp = A / (pow(PI, 2.0));
+  matrix<Type> Result(resl, resl);
+  for (uint i = 0; i < resl; i++)
+    {
+    for (uint j = 0; j < resl; j++)
+      {
+      real4 r = sqrt(pow(A - real4(i) + B, 2.0) + pow(A - real4(j) + C, 2.0));
+      Result(i, j) = complr4(ctp * sin(PI * r) * sin(PI * r / A) / (pow(r, 2.0)));
+      }
+    }
+  return Result;
   } // END make lanczos matrix
-
-  

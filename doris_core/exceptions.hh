@@ -28,8 +28,8 @@
 #ifndef EXCEPTIONS_H
 #define EXCEPTIONS_H
 
-using namespace std;                    // BK 29-Mar-2003, new compiler?
-                                        // TODO SLiu see constants.hh
+using namespace std; // BK 29-Mar-2003, new compiler?
+                     // TODO SLiu see constants.hh
 
 // Jia defined this for compilation under windows
 // Bert Kampes, 24-Aug-2005
@@ -37,10 +37,8 @@ using namespace std;                    // BK 29-Mar-2003, new compiler?
 #pragma once
 #endif // _MSC_VER > 1000
 
-#include <csignal>                      // function signal()
-#include <cstring>                      // strcpy
-
-
+#include <csignal> // function signal()
+#include <cstring> // strcpy
 
 /*********************************************************************
  * @brief exception handler for floating point exception
@@ -48,11 +46,10 @@ using namespace std;                    // BK 29-Mar-2003, new compiler?
 void CatchSignals(void (*SigHandler)(int));
 void handle_signal(int signum);
 
-
 /*********************************************************************
  * @brief exception handler class
  *********************************************************************/
-// #include "exceptions.hh"  // this file..  
+// #include "exceptions.hh"  // this file..
 // int main(
 //        int argc,
 //        char* argv[])
@@ -89,119 +86,115 @@ void handle_signal(int signum);
 // return int(0);
 // } // END main
 
-
 // ______ Base class for all error exceptions that can be caught ______
 class EXCEPTION
   {
-  public:
-    EXCEPTION()          {};
-    virtual ~EXCEPTION() {};
-    operator const char*() const {return(get_error_string());};
-    // virtual operator const char*() const {return(get_error_string());}; // suggested by SLiu
-    virtual const char* get_error_string() const {return("generic error");};
+public:
+  EXCEPTION() {};
+  virtual ~EXCEPTION() {};
+  operator const char *() const { return (get_error_string()); };
+  // virtual operator const char*() const {return(get_error_string());}; // suggested by SLiu
+  virtual const char *get_error_string() const { return ("generic error"); };
   };
 // ______ Now all errors follow ______
 // ______ some error ______
 class SOME_ERROR : public EXCEPTION
   {
-  private:
-    char err_str[64];
-  public:
-    SOME_ERROR() {strcpy(err_str,"specific error");};
-    virtual ~SOME_ERROR() {};
-    operator const char*() const {return(get_error_string());};   // overloading, why?
-    virtual const char* get_error_string() const {return(err_str);};
+private:
+  char err_str[64];
+
+public:
+  SOME_ERROR() { strcpy(err_str, "specific error"); };
+  ~SOME_ERROR() override {};
+  operator const char *() const { return (get_error_string()); }; // overloading, why?
+  const char *get_error_string() const override { return (err_str); };
   };
 // ______ some input error ______
 class INPUT_ERROR : public EXCEPTION
   {
-  private:
-    char err_str[64];// make part of base class?
-  public:
-    INPUT_ERROR() {strcpy(err_str,"input error");};
-    virtual ~INPUT_ERROR() {};
-    operator const char*() const {return(get_error_string());};
-    virtual const char* get_error_string() const {return(err_str);};
+private:
+  char err_str[64]; // make part of base class?
+public:
+  INPUT_ERROR() { strcpy(err_str, "input error"); };
+  ~INPUT_ERROR() override {};
+  operator const char *() const { return (get_error_string()); };
+  const char *get_error_string() const override { return (err_str); };
   };
 // ______ some file error ______
 class FILE_ERROR : public EXCEPTION
   {
-  private:
-    char err_str[64];// make part of base class?
-  public:
-    FILE_ERROR() {strcpy(err_str,"file error");};
-    virtual ~FILE_ERROR() {};
-    operator const char*() const {return(get_error_string());};
-    virtual const char* get_error_string() const {return(err_str);};
+private:
+  char err_str[64]; // make part of base class?
+public:
+  FILE_ERROR() { strcpy(err_str, "file error"); };
+  ~FILE_ERROR() override {};
+  operator const char *() const { return (get_error_string()); };
+  const char *get_error_string() const override { return (err_str); };
   };
 // ______ memory error ______
 class MEMORY_ERROR : public EXCEPTION
   {
-  private:
-    char err_str[64];// make part of base class?
-  public:
-    MEMORY_ERROR() {strcpy(err_str,"memory error");};
-    virtual ~MEMORY_ERROR() {};
-    operator const char*() const {return(get_error_string());};
-    virtual const char* get_error_string() const {return(err_str);};
+private:
+  char err_str[64]; // make part of base class?
+public:
+  MEMORY_ERROR() { strcpy(err_str, "memory error"); };
+  ~MEMORY_ERROR() override {};
+  operator const char *() const { return (get_error_string()); };
+  const char *get_error_string() const override { return (err_str); };
   };
 // ______ unhandled case error ______
 class UNHANDLED_CASE_ERROR : public EXCEPTION
   {
-  private:
-    char err_str[64];// make part of base class?
-  public:
-    UNHANDLED_CASE_ERROR() {strcpy(err_str,"unhandled case error");};
-    virtual ~UNHANDLED_CASE_ERROR() {};
-    operator const char*() const {return(get_error_string());};
-    virtual const char* get_error_string() const {return(err_str);};
+private:
+  char err_str[64]; // make part of base class?
+public:
+  UNHANDLED_CASE_ERROR() { strcpy(err_str, "unhandled case error"); };
+  ~UNHANDLED_CASE_ERROR() override {};
+  operator const char *() const { return (get_error_string()); };
+  const char *get_error_string() const override { return (err_str); };
   };
 // ______ unhandled case error ______
 class ARGUMENT_ERROR : public EXCEPTION
   {
-  private:
-    char err_str[64];// make part of base class?
-  public:
-    ARGUMENT_ERROR() {strcpy(err_str,"wrong input argument(s) to function");};
-    virtual ~ARGUMENT_ERROR() {};
-    operator const char*() const {return(get_error_string());};
-    virtual const char* get_error_string() const {return(err_str);};
+private:
+  char err_str[64]; // make part of base class?
+public:
+  ARGUMENT_ERROR() { strcpy(err_str, "wrong input argument(s) to function"); };
+  ~ARGUMENT_ERROR() override {};
+  operator const char *() const { return (get_error_string()); };
+  const char *get_error_string() const override { return (err_str); };
   };
 // ______ keyword error ______
 class KEYWORD_ERROR : public EXCEPTION
   {
-  private:
-    char err_str[64];// make part of base class?
-  public:
-    KEYWORD_ERROR() {strcpy(err_str,"incorrect keyword");};
-    virtual ~KEYWORD_ERROR() {};
-    operator const char*() const {return(get_error_string());};
-    virtual const char* get_error_string() const {return(err_str);};
+private:
+  char err_str[64]; // make part of base class?
+public:
+  KEYWORD_ERROR() { strcpy(err_str, "incorrect keyword"); };
+  ~KEYWORD_ERROR() override {};
+  operator const char *() const { return (get_error_string()); };
+  const char *get_error_string() const override { return (err_str); };
   };
 // ______ usage request error ______
 class USAGE_ERROR : public EXCEPTION
   {
-  private:
-    char err_str[64];// make part of base class?
-  public:
-    USAGE_ERROR() {strcpy(err_str,"done");};
-    virtual ~USAGE_ERROR() {};
-    operator const char*() const {return(get_error_string());};
-    virtual const char* get_error_string() const {return(err_str);};
+private:
+  char err_str[64]; // make part of base class?
+public:
+  USAGE_ERROR() { strcpy(err_str, "done"); };
+  ~USAGE_ERROR() override {};
+  operator const char *() const { return (get_error_string()); };
+  const char *get_error_string() const override { return (err_str); };
   };
 
-
 // ====== Globals to throw everywhere, e.g., throw(some_error) ======
-extern SOME_ERROR       some_error;// can be thrown from all programs
-extern INPUT_ERROR      input_error;// can be thrown from all programs
-extern FILE_ERROR       file_error;// can be thrown from all programs
-extern MEMORY_ERROR     memory_error;// can be thrown from all programs
-extern UNHANDLED_CASE_ERROR unhandled_case_error;// can be thrown from all programs
-extern ARGUMENT_ERROR   argument_error;// can be thrown from all programs
-extern KEYWORD_ERROR    keyword_error;// can be thrown from all programs
-extern USAGE_ERROR      usage_error;// can be thrown from all programs
-
+extern SOME_ERROR some_error;                     // can be thrown from all programs
+extern INPUT_ERROR input_error;                   // can be thrown from all programs
+extern FILE_ERROR file_error;                     // can be thrown from all programs
+extern MEMORY_ERROR memory_error;                 // can be thrown from all programs
+extern UNHANDLED_CASE_ERROR unhandled_case_error; // can be thrown from all programs
+extern ARGUMENT_ERROR argument_error;             // can be thrown from all programs
+extern KEYWORD_ERROR keyword_error;               // can be thrown from all programs
+extern USAGE_ERROR usage_error;                   // can be thrown from all programs
 
 #endif // EXCEPTIONS_H
-
-
