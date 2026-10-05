@@ -124,6 +124,9 @@ doris_users@tudelft.nl
 Fork additions - Doris-UT 6.0.0 (University of Tokyo)
 ===========================================================================
 
+This fork is jointly made by Ryo Natsuaki and Claude Sonnet 4.1 for modernization of source codes in Doris
+as well as adding recent SAR platforms. ALOS-2, -4 and StriX were applied manually. NISAR and BIOMASS are AI-driven.
+
 This fork adds single-pair support for three new sensors to doris_core, on
 top of the modernisation work in doris_core/modernized.  Everything below
 concerns the C++ core (individual interferograms); the Sentinel-1 stack
@@ -135,6 +138,9 @@ New sensors
 
     M_IN_METHOD     sensor                     product format
     ------------    -----------------------    ---------------------------
+    ALOS2           ALOS-2 L-band              CEOS
+    ALOS4           ALOS-4 L-band              CEOS
+    STRIX           STRIX X-band               CEOS
     NISAR           NISAR L-band RSLC          HDF5 (ISCE3)
     NISAR-L         same as NISAR
     NISAR-S         NISAR S-band RSLC          HDF5 (ISCE3)
